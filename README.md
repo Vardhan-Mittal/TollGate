@@ -27,8 +27,9 @@ Discovery document: `/.well-known/tollgate.json`
 |---|---|
 | 402 gate, quotes, wallet debits, access tokens, ledger | ✅ working |
 | Demo publisher (fictional blog) | ✅ working |
-| PayPal wallet top-up (Orders v2 + JS SDK) | ⏳ week 2 |
-| Publisher cash-out (Payouts API) | ⏳ week 2 |
+| PayPal wallet top-up (Orders v2 + JS SDK v6), webhooks | ✅ orders verified in sandbox; browser checkout pending a buyer test |
+| Auto-recharge from saved PayPal (Vault) | ✅ built, needs a sandbox buyer test |
+| Publisher cash-out (Payouts API) | ✅ working |
 | AI pricing + AI research agent | ⏳ week 3 |
 
 ## Run it locally
@@ -43,6 +44,8 @@ npm run db:seed              # demo publisher, 6 articles, demo agent wallet ($5
 npm run dev
 ```
 
+Pages: `/blog` (demo publisher), `/wallet` (fund agents with PayPal), `/dashboard` (publisher earnings and cash-out).
+
 Then, in a second terminal, watch a bot hit the paywall, pay and read:
 
 ```bash
@@ -55,6 +58,16 @@ Or by hand:
 ```bash
 curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 ```
+
+## PayPal webhooks (deployed only)
+
+PayPal delivers webhooks to public HTTPS URLs, so after deploying:
+
+```bash
+npm run webhook:register -- https://your-app.example.com
+```
+
+Put the printed id in `PAYPAL_WEBHOOK_ID`. Locally, top-ups are credited from the capture response instead.
 
 ## Tech
 

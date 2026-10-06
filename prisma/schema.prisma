@@ -18,6 +18,7 @@ model Publisher {
   balanceCents Int        @default(0)
   createdAt    DateTime   @default(now())
   resources    Resource[]
+  payouts      Payout[]
 }
 
 model Resource {
@@ -51,6 +52,13 @@ model Agent {
   createdAt        DateTime      @default(now())
   quotes           Quote[]
   grants           AccessGrant[]
+  topUps           TopUp[]
+
+  // PayPal vault token saved with the operator's consent; used for auto-recharge.
+  paypalVaultId              String?
+  paypalCustomerId           String?
+  autoRechargeThresholdCents Int?
+  autoRechargeAmountCents    Int?
 }
 
 enum License {
@@ -97,6 +105,7 @@ enum LedgerKind {
   EARNING
   FEE
   PAYOUT
+  PAYOUT_REVERSAL
 }
 
 model LedgerEntry {
@@ -129,4 +138,53 @@ model BotVisit {
   createdAt  DateTime     @default(now())
 
   @@index([createdAt])
+}
+
+enum TopUpStatus {
+  CREATED
+  COMPLETED
+  FAILED
+}
+
+model TopUp {
+  id            String      @id @default(cuid())
+  agentId       String
+  agent         Agent       @relation(fields: [agentId], references: [id])
+  amountCents   Int
+  paypalOrderId String?     @unique
+  captureId     String?     @unique
+  status        TopUpStatus @default(CREATED)
+  automatic     Boolean     @default(false)
+  failureReason String?
+  createdAt     DateTime    @default(now())
+  completedAt   DateTime?
+
+  @@index([agentId, createdAt])
+}
+
+enum PayoutStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Payout {
+  id            String       @id @default(cuid())
+  publisherId   String
+  publisher     Publisher    @relation(fields: [publisherId], references: [id])
+  amountCents   Int
+  receiverEmail String
+  paypalBatchId String?      @unique
+  paypalStatus  String?
+  status        PayoutStatus @default(PENDING)
+  failureReason String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+// PayPal webhook event ids that were already processed (deduplication).
+model WebhookEvent {
+  id         String   @id
+  eventType  String
+  receivedAt DateTime @default(now())
 }

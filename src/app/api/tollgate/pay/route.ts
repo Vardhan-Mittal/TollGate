@@ -1,7 +1,9 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
 import { z } from "zod";
+import { errorResponse } from "@/lib/http";
 import { readBearerKey } from "@/lib/tollgate/keys";
-import { TollgateError, payQuote } from "@/lib/tollgate/service";
+import { TollgateError, findAgentByKey, payQuote } from "@/lib/tollgate/service";
+import { autoRecharge } from "@/lib/wallet";
 
 const Body = z.object({ quote_id: z.string().min(1) });
 
@@ -19,11 +21,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad_request", message: "Body must be { quote_id }." }, { status: 400 });
   }
 
+  const pay = () => payQuote({ agentKey, quoteId: parsed.data.quote_id, origin: req.nextUrl.origin });
+
   try {
-    const result = await payQuote({ agentKey, quoteId: parsed.data.quote_id, origin: req.nextUrl.origin });
+    let result;
+    try {
+      result = await pay();
+    } catch (err) {
+      // Out of money: if the operator saved PayPal for auto-recharge, refill
+      // from it right now and retry once, so the agent never stalls.
+      if (!(err instanceof TollgateError && err.code === "insufficient_funds")) throw err;
+      const agent = await findAgentByKey(agentKey);
+      const recharged = await autoRecharge(agent.id, { force: true });
+      if (!recharged?.credited) throw err;
+      result = await pay();
+    }
+
+    // Keep the wallet above the operator's threshold without slowing this response.
+    after(async () => {
+      const agent = await findAgentByKey(agentKey);
+      await autoRecharge(agent.id);
+    });
+
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
-    if (err instanceof TollgateError) return NextResponse.json(err.toJSON(), { status: err.status });
-    throw err;
+    return errorResponse(err);
   }
 }

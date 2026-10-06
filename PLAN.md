@@ -147,7 +147,7 @@ tollgate/                       Next.js (App Router, TypeScript)
 ## 7. Timeline (5 weeks)
 
 ### Week 1 — Oct 7–13: Foundation + protocol
-- [ ] PayPal Developer account; sandbox **business** (platform) + 2 **personal** accounts (agent operator, publisher); app Client ID/Secret
+- [x] PayPal Developer account; sandbox **business** (platform) + 2 **personal** accounts (agent operator, publisher); app Client ID/Secret
 - [ ] LLM API key (Gemini free tier or Anthropic), Neon Postgres, KERNEL account ($50 credits)
 - [x] Public GitHub repo, MIT license, commit daily
 - [x] Prisma schema + ledger
@@ -156,11 +156,11 @@ tollgate/                       Next.js (App Router, TypeScript)
 - [x] `/api/tollgate/pay` with a seeded wallet (no PayPal yet) → full loop works with `curl`
 
 ### Week 2 — Oct 14–20: PayPal money in & out
-- [ ] PayPal REST client with token caching
-- [ ] Wallet top-up: Orders v2 + JS SDK button → capture → credit ledger
-- [ ] Webhook endpoint + signature verification; ledger credited only once (idempotent)
-- [ ] Publisher cash-out with Payouts API (minus 10% platform fee)
-- [ ] **Test Vault early** (enable in sandbox app settings). If blocked → fallback: low-balance alert + one-click top-up
+- [x] PayPal REST client with token caching
+- [x] Wallet top-up: Orders v2 + JS SDK button → capture → credit ledger
+- [x] Webhook endpoint + signature verification; ledger credited only once (idempotent)
+- [x] Publisher cash-out with Payouts API (minus 10% platform fee)
+- [x] **Test Vault early** (enable in sandbox app settings). If blocked → fallback: low-balance alert + one-click top-up
 - [ ] Invoicing: monthly invoice for an "enterprise" agent
 
 ### Week 3 — Oct 21–27: AI
