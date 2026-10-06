@@ -50,7 +50,7 @@ Then, in a second terminal, watch a bot hit the paywall, pay and read:
 
 ```bash
 npm run demo:agent
-npm run demo:agent -- voltaris-delays-sodium-ion-plant train
+npm run demo:agent -- quillbrook-delays-sodium-ion-plant train
 ```
 
 Or by hand:

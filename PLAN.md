@@ -6,7 +6,7 @@
 
 - **Hackathon:** Build What's Next with PayPal and AI (Devpost)
 - **Deadline:** **Nov 12, 2026, 12:00 PM PST** — we submit on **Nov 10**
-- **Prize targets:** Overall · Best Use of Agentic Commerce · Best Use of PayPal + AI · Most Creative · KERNEL / Render sponsor prizes
+- **Prize targets:** Overall (or Best Use of Agentic Commerce) + one sponsor prize: **AG Grid** (dashboard tables) and/or **Render** (hosting). KERNEL has no prize in the official rules, so it is optional.
 
 ---
 
@@ -64,7 +64,7 @@ rails** — money everyone already has.
    EV battery prices, max $0.50"), it browses, hits 402s, reads teasers,
    **decides** pay vs. skip with a stated reason, pays, and cites paid sources
    in its final answer. Runs in a **KERNEL** cloud browser for real-site
-   browsing (sponsor prize).
+   browsing (optional — KERNEL is not a prize category).
 3. **Publisher finance copilot** — chat over PayPal Agent Toolkit tools.
 4. *(Stretch)* **Bot-behavior detection** — flag crawlers that fake a human
    user-agent from request patterns.

@@ -46,25 +46,25 @@ Lead times moved the other way. Grid-storage buyers placed large orders early in
 Quotes are collected over two weeks, for delivery in the following quarter, on standard commercial terms. We do not include spot-market or distressed-inventory prices. The full supplier table is available to subscribers.`,
   },
   {
-    slug: "voltaris-delays-sodium-ion-plant",
-    title: "Voltaris Delays Its First Sodium-Ion Plant by Nine Months",
+    slug: "quillbrook-delays-sodium-ion-plant",
+    title: "Quillbrook Delays Its First Sodium-Ion Plant by Nine Months",
     description: "The startup's flagship factory slips to mid-2027 after an equipment dispute.",
     teaser:
-      "Fresh news: fictional startup Voltaris pushes its 4 GWh sodium-ion factory to mid-2027, citing a dispute with its coating-equipment vendor.",
+      "Fresh news: fictional startup Quillbrook pushes its 4 GWh sodium-ion factory to mid-2027, citing a dispute with its coating-equipment vendor.",
     priceReadCents: 5,
     priceTrainCents: 15,
     daysAgo: 0,
-    body: `Voltaris, the sodium-ion battery startup, has pushed back the opening of its first 4 GWh factory by nine months, to the middle of 2027.
+    body: `Quillbrook, the sodium-ion battery startup, has pushed back the opening of its first 4 GWh factory by nine months, to the middle of 2027.
 
 In a letter to customers seen by The Grid Ledger, the company blamed a contract dispute with the supplier of its electrode-coating lines. Two of the six lines have been delivered; the remaining four are on hold until the dispute is settled.
 
 ## Why it matters
 
-Sodium-ion cells are cheaper to make than lithium-ion cells and do not need lithium, but they store less energy per kilogram. Several grid-storage developers had planned 2026 projects around Voltaris cells.
+Sodium-ion cells are cheaper to make than lithium-ion cells and do not need lithium, but they store less energy per kilogram. Several grid-storage developers had planned 2026 projects around Quillbrook cells.
 
 - Two developers told us they are switching those projects to LFP
 - One said it would wait, because sodium-ion performs better in cold climates
-- Voltaris says its existing pilot line will keep shipping sample cells
+- Quillbrook says its existing pilot line will keep shipping sample cells
 
 The company declined to say whether the delay will require new funding.`,
   },
