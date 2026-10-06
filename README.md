@@ -27,8 +27,8 @@ Discovery document: `/.well-known/tollgate.json`
 |---|---|
 | 402 gate, quotes, wallet debits, access tokens, ledger | ✅ working |
 | Demo publisher (fictional blog) | ✅ working |
-| PayPal wallet top-up (Orders v2 + JS SDK v6), webhooks | ✅ orders verified in sandbox; browser checkout pending a buyer test |
-| Auto-recharge from saved PayPal (Vault) | ✅ built, needs a sandbox buyer test |
+| PayPal wallet top-up (Orders v2 + JS SDK v6), webhooks | ✅ working (tested end to end in sandbox) |
+| Auto-recharge from saved PayPal (Vault) | ✅ working (merchant-initiated charge, no buyer present) |
 | Publisher cash-out (Payouts API) | ✅ working |
 | AI pricing + AI research agent | ⏳ week 3 |
 
