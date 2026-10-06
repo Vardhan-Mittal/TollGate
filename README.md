@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tollgate
 
-## Getting Started
+**AI agents pay the web they read.** Tollgate is an HTTP 402 paywall for AI
+crawlers and agents, settled on PayPal. Humans read for free; AI agents get a
+price quote, pay from a PayPal-funded wallet, and receive a short-lived access
+token.
 
-First, run the development server:
+> 🚧 Built for the *Build What's Next with PayPal and AI* hackathon. Work in
+> progress — see [PLAN.md](PLAN.md) for the roadmap.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## How it works
+
+```
+Agent ── GET /blog/article ─────────────▶ proxy: AI bot, no token
+      ◀─ 402 Payment Required { quote_id, price, teaser, pay_url }
+Agent ── POST /api/tollgate/pay { quote_id } (Bearer agent key)
+      ◀─ 200 { access_token, charged, balance }
+Agent ── GET /blog/article (Authorization: Tollgate <token>)
+      ◀─ 200 content
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Discovery document: `/.well-known/tollgate.json`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Status
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Piece | State |
+|---|---|
+| 402 gate, quotes, wallet debits, access tokens, ledger | ✅ working |
+| Demo publisher (fictional blog) | ✅ working |
+| PayPal wallet top-up (Orders v2 + JS SDK) | ⏳ week 2 |
+| Publisher cash-out (Payouts API) | ⏳ week 2 |
+| AI pricing + AI research agent | ⏳ week 3 |
 
-## Learn More
+## Run it locally
 
-To learn more about Next.js, take a look at the following resources:
+Requirements: Node.js 20+, a Postgres database (e.g. [Neon](https://neon.tech) free tier).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+cp .env.example .env.local   # then fill in the values
+npx prisma migrate deploy
+npm run db:seed              # demo publisher, 6 articles, demo agent wallet ($5)
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Then, in a second terminal, watch a bot hit the paywall, pay and read:
 
-## Deploy on Vercel
+```bash
+npm run demo:agent
+npm run demo:agent -- voltaris-delays-sodium-ion-plant train
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Or by hand:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
+```
+
+## Tech
+
+Next.js 16 · TypeScript · Prisma 7 + Postgres · jose (signed access tokens) ·
+PayPal REST APIs (sandbox) · Vercel AI SDK
+
+## License
+
+[MIT](LICENSE)

@@ -149,11 +149,11 @@ tollgate/                       Next.js (App Router, TypeScript)
 ### Week 1 — Oct 7–13: Foundation + protocol
 - [ ] PayPal Developer account; sandbox **business** (platform) + 2 **personal** accounts (agent operator, publisher); app Client ID/Secret
 - [ ] LLM API key (Gemini free tier or Anthropic), Neon Postgres, KERNEL account ($50 credits)
-- [ ] Public GitHub repo, MIT license, commit daily
-- [ ] Prisma schema + ledger
-- [ ] Demo blog with 5–6 articles of different value (news, original data, evergreen, fluff)
-- [ ] Proxy (`src/proxy.ts`, Next 16's renamed middleware): bot detection + 402 quote + token verification
-- [ ] `/api/tollgate/pay` with a seeded wallet (no PayPal yet) → full loop works with `curl`
+- [x] Public GitHub repo, MIT license, commit daily
+- [x] Prisma schema + ledger
+- [x] Demo blog with 5–6 articles of different value (news, original data, evergreen, fluff)
+- [x] Proxy (`src/proxy.ts`, Next 16's renamed middleware): bot detection + 402 quote + token verification
+- [x] `/api/tollgate/pay` with a seeded wallet (no PayPal yet) → full loop works with `curl`
 
 ### Week 2 — Oct 14–20: PayPal money in & out
 - [ ] PayPal REST client with token caching

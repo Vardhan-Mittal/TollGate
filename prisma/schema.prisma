@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Amounts are integer US cents everywhere. Ledger accounts are strings:
+// "agent:<id>", "publisher:<id>" or "platform".
+
+model Publisher {
+  id           String     @id @default(cuid())
+  name         String
+  domain       String
+  paypalEmail  String?
+  balanceCents Int        @default(0)
+  createdAt    DateTime   @default(now())
+  resources    Resource[]
+}
+
+model Resource {
+  id              String        @id @default(cuid())
+  publisherId     String
+  publisher       Publisher     @relation(fields: [publisherId], references: [id])
+  path            String        @unique
+  title           String
+  description     String
+  body            String
+  teaser          String
+  priceReadCents  Int
+  priceTrainCents Int
+  aiReasoning     String?
+  valueScore      Int?
+  publishedAt     DateTime
+  createdAt       DateTime      @default(now())
+  quotes          Quote[]
+  grants          AccessGrant[]
+  visits          BotVisit[]
+}
+
+model Agent {
+  id               String        @id @default(cuid())
+  name             String
+  operatorEmail    String?
+  apiKeyHash       String        @unique
+  apiKeyPrefix     String
+  balanceCents     Int           @default(0)
+  dailyBudgetCents Int?
+  createdAt        DateTime      @default(now())
+  quotes           Quote[]
+  grants           AccessGrant[]
+}
+
+enum License {
+  READ
+  TRAIN
+}
+
+enum QuoteStatus {
+  OPEN
+  PAID
+}
+
+model Quote {
+  id         String       @id @default(cuid())
+  resourceId String
+  resource   Resource     @relation(fields: [resourceId], references: [id])
+  agentId    String?
+  agent      Agent?       @relation(fields: [agentId], references: [id])
+  license    License
+  priceCents Int
+  status     QuoteStatus  @default(OPEN)
+  expiresAt  DateTime
+  paidAt     DateTime?
+  createdAt  DateTime     @default(now())
+  grant      AccessGrant?
+}
+
+model AccessGrant {
+  id         String   @id @default(cuid())
+  quoteId    String   @unique
+  quote      Quote    @relation(fields: [quoteId], references: [id])
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id])
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id])
+  license    License
+  priceCents Int
+  createdAt  DateTime @default(now())
+}
+
+enum LedgerKind {
+  TOPUP
+  CHARGE
+  EARNING
+  FEE
+  PAYOUT
+}
+
+model LedgerEntry {
+  id             String     @id @default(cuid())
+  account        String
+  kind           LedgerKind
+  amountCents    Int
+  quoteId        String?
+  externalRef    String?
+  idempotencyKey String?    @unique
+  createdAt      DateTime   @default(now())
+
+  @@index([account, createdAt])
+}
+
+enum VisitOutcome {
+  QUOTED
+  PAID_ACCESS
+  FREE_ACCESS
+}
+
+model BotVisit {
+  id         String       @id @default(cuid())
+  resourceId String?
+  resource   Resource?    @relation(fields: [resourceId], references: [id])
+  path       String
+  userAgent  String
+  botName    String?
+  outcome    VisitOutcome
+  createdAt  DateTime     @default(now())
+
+  @@index([createdAt])
+}
