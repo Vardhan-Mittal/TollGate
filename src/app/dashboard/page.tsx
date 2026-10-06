@@ -80,7 +80,7 @@ async function Dashboard() {
                     {p.failureReason && <span className="block text-xs text-red-600">{p.failureReason}</span>}
                   </span>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[p.status]}`} title={p.paypalStatus ?? ""}>
-                    {p.status.toLowerCase()}
+                    {p.status === "PENDING" && p.paypalStatus?.endsWith("UNCLAIMED") ? "unclaimed" : p.status.toLowerCase()}
                   </span>
                 </li>
               ))}
