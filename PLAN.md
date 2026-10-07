@@ -148,7 +148,7 @@ tollgate/                       Next.js (App Router, TypeScript)
 
 ### Week 1 — Oct 7–13: Foundation + protocol
 - [x] PayPal Developer account; sandbox **business** (platform) + 2 **personal** accounts (agent operator, publisher); app Client ID/Secret
-- [ ] LLM API key (Gemini free tier or Anthropic), Neon Postgres, KERNEL account ($50 credits)
+- [x] LLM API key (Gemini), Neon Postgres (KERNEL account optional)
 - [x] Public GitHub repo, MIT license, commit daily
 - [x] Prisma schema + ledger
 - [x] Demo blog with 5–6 articles of different value (news, original data, evergreen, fluff)
@@ -164,11 +164,11 @@ tollgate/                       Next.js (App Router, TypeScript)
 - [ ] Invoicing: monthly invoice for an "enterprise" agent
 
 ### Week 3 — Oct 21–27: AI
-- [ ] Pricing engine with structured output (zod) + floor/ceiling clamp
-- [ ] Buyer agent: tools `fetch_url`, `pay_quote`, `get_balance`; budget reasoning; final answer with paid citations
-- [ ] Stream agent steps to the `/agent` console (decision cards: PAID / SKIPPED + why)
+- [x] Pricing engine with structured output (zod) + floor/ceiling clamp
+- [x] Buyer agent: tools `fetch_url`, `pay_quote`, `get_balance`; budget reasoning; final answer with paid citations
+- [x] Stream agent steps to the `/agent` console (decision cards: PAID / SKIPPED + why)
 - [ ] KERNEL browser tool for browsing real pages
-- [ ] Publisher copilot with `@paypal/agent-toolkit/ai-sdk`
+- [x] Publisher copilot with `@paypal/agent-toolkit/ai-sdk`
 
 ### Week 4 — Oct 28–Nov 3: Product polish
 - [ ] Dashboard: earnings over time, top paying bots, per-article AI price + reasoning, payout history

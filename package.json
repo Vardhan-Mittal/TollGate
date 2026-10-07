@@ -11,11 +11,15 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "demo:agent": "tsx scripts/demo-agent.ts",
-    "webhook:register": "tsx scripts/register-webhook.ts"
+    "webhook:register": "tsx scripts/register-webhook.ts",
+    "ai:price": "tsx scripts/price-articles.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.130",
+    "@paypal/agent-toolkit": "^1.11.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "ai": "^6.0.301",
     "jose": "^6.2.12",
     "nanoid": "^5.1.16",
     "next": "16.4.0",

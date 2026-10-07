@@ -19,7 +19,7 @@ export class PayPalError extends Error {
   }
 }
 
-async function accessToken(): Promise<string> {
+export async function accessToken(): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
 
   const id = process.env.PAYPAL_CLIENT_ID;

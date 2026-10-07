@@ -30,7 +30,9 @@ Discovery document: `/.well-known/tollgate.json`
 | PayPal wallet top-up (Orders v2 + JS SDK v6), webhooks | ✅ working (tested end to end in sandbox) |
 | Auto-recharge from saved PayPal (Vault) | ✅ working (merchant-initiated charge, no buyer present) |
 | Publisher cash-out (Payouts API) | ✅ working |
-| AI pricing + AI research agent | ⏳ week 3 |
+| AI pricing engine (seller side) | ✅ working |
+| AI research agent with pay/skip decisions (buyer side) | ✅ working |
+| Publisher finance assistant (PayPal Agent Toolkit) | ✅ working |
 
 ## Run it locally
 
@@ -44,7 +46,9 @@ npm run db:seed              # demo publisher, 6 articles, demo agent wallet ($5
 npm run dev
 ```
 
-Pages: `/blog` (demo publisher), `/wallet` (fund agents with PayPal), `/dashboard` (publisher earnings and cash-out).
+Pages: `/blog` (demo publisher), `/agent` (AI research agent console), `/wallet` (fund agents with PayPal), `/dashboard` (earnings, AI pricing, cash-out, finance assistant).
+
+To (re)price every article with AI: `npm run ai:price`.
 
 Then, in a second terminal, watch a bot hit the paywall, pay and read:
 
@@ -59,6 +63,16 @@ Or by hand:
 curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 ```
 
+## Where AI is used
+
+| Feature | What the AI does | Guardrails in code |
+|---|---|---|
+| **Pricing engine** (`src/lib/ai/pricing.ts`) | Scores freshness, originality, depth and scarcity; sets read/train prices, a teaser and a plain-English reason | Prices clamped to publisher limits; scores normalised |
+| **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; wallet never below zero |
+| **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
+
+Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
+
 ## PayPal webhooks (deployed only)
 
 PayPal delivers webhooks to public HTTPS URLs, so after deploying:
@@ -72,7 +86,7 @@ Put the printed id in `PAYPAL_WEBHOOK_ID`. Locally, top-ups are credited from th
 ## Tech
 
 Next.js 16 · TypeScript · Prisma 7 + Postgres · jose (signed access tokens) ·
-PayPal REST APIs (sandbox) · Vercel AI SDK
+PayPal REST APIs (sandbox) · PayPal JS SDK v6 · PayPal Agent Toolkit · Vercel AI SDK + Google Gemini
 
 ## License
 

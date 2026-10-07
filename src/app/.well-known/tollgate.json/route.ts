@@ -9,6 +9,7 @@ export function GET(req: NextRequest) {
     currency: "USD",
     licenses: ["read", "train"],
     gated_paths: ["/blog/*"],
+    catalog_url: `${origin}/api/tollgate/catalog`,
     pay_url: `${origin}/api/tollgate/pay`,
     balance_url: `${origin}/api/tollgate/balance`,
     topup_url: `${origin}/wallet`,

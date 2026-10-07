@@ -1,10 +1,13 @@
 import { Suspense } from "react";
+import { PRICE_LIMITS } from "@/lib/ai/pricing";
 import { prisma } from "@/lib/db";
 import { formatCents } from "@/lib/money";
 import { MIN_PAYOUT_CENTS, refreshPayout } from "@/lib/payouts";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
 import { accounts } from "@/lib/tollgate/service";
 import { CashOutForm } from "./cash-out-form";
+import { FinanceAssistant } from "./finance-assistant";
+import { RepriceButton } from "./reprice-button";
 
 export default function DashboardPage() {
   return (
@@ -110,25 +113,41 @@ async function Dashboard() {
         </section>
       </div>
 
+      <FinanceAssistant />
+
       <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-        <h2 className="mb-4 font-semibold">Articles</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Articles &amp; AI pricing</h2>
+            <p className="text-sm text-zinc-500">
+              AI appraises each article; prices are clamped to your limits ({formatCents(PRICE_LIMITS.readMinCents)}–
+              {formatCents(PRICE_LIMITS.readMaxCents)} to read, up to {formatCents(PRICE_LIMITS.trainMaxCents)} to train).
+            </p>
+          </div>
+          <RepriceButton />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-zinc-500">
               <tr>
-                <th className="py-2 pr-4 font-medium">Article</th>
+                <th className="py-2 pr-4 font-medium">Article &amp; AI reasoning</th>
+                <th className="py-2 pr-4 font-medium">Value</th>
                 <th className="py-2 pr-4 font-medium">Read</th>
                 <th className="py-2 pr-4 font-medium">Train</th>
                 <th className="py-2 font-medium">Paid reads</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-zinc-100 align-top dark:divide-zinc-800">
               {resources.map((r) => (
                 <tr key={r.id}>
-                  <td className="py-2 pr-4">{r.title}</td>
-                  <td className="py-2 pr-4 tabular-nums">{r.priceReadCents ? formatCents(r.priceReadCents) : "free"}</td>
-                  <td className="py-2 pr-4 tabular-nums">{r.priceTrainCents ? formatCents(r.priceTrainCents) : "free"}</td>
-                  <td className="py-2 tabular-nums">{r._count.grants}</td>
+                  <td className="py-3 pr-4">
+                    <p className="font-medium">{r.title}</p>
+                    {r.aiReasoning && <p className="mt-1 max-w-2xl text-xs text-zinc-500">{r.aiReasoning}</p>}
+                  </td>
+                  <td className="py-3 pr-4 tabular-nums">{r.valueScore ?? "—"}</td>
+                  <td className="py-3 pr-4 tabular-nums">{r.priceReadCents ? formatCents(r.priceReadCents) : "free"}</td>
+                  <td className="py-3 pr-4 tabular-nums">{r.priceTrainCents ? formatCents(r.priceTrainCents) : "free"}</td>
+                  <td className="py-3 tabular-nums">{r._count.grants}</td>
                 </tr>
               ))}
             </tbody>
