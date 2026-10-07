@@ -36,6 +36,7 @@ const AI = [
 ];
 
 const DEMOS = [
+  { href: "/live", title: "Live: agent and publisher side by side", text: "Watch an AI pay and the publisher earn, in real time." },
   { href: "/agent", title: "Run the research agent", text: "Watch an AI decide what is worth paying for." },
   { href: "/dashboard", title: "Publisher dashboard", text: "AI pricing, traffic, payouts and the finance assistant." },
   { href: "/wallet", title: "Agent wallet", text: "Top up with PayPal and turn on auto-recharge." },
@@ -54,7 +55,7 @@ export default function Home() {
       </p>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/agent" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
+        <Link href="/live" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
           Watch an agent pay
         </Link>
         <Link href="/dashboard" className="rounded-lg border border-zinc-300 px-5 py-2.5 font-medium dark:border-zinc-700">

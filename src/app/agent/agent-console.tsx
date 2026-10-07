@@ -13,7 +13,8 @@ const BUDGETS = [10, 25, 30, 50, 100];
 
 const cents = (c: number) => (c < 100 ? `${c}¢` : `$${(c / 100).toFixed(2)}`);
 
-export function AgentConsole() {
+// "split" puts the form beside the timeline; "stacked" fits a narrow column (the /live page).
+export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked" }) {
   const router = useRouter();
   const [task, setTask] = useState(PRESETS[0].task);
   const [budgetCents, setBudgetCents] = useState(PRESETS[0].budgetCents);
@@ -59,7 +60,7 @@ export function AgentConsole() {
   const timeline = events.filter((e) => e.type !== "answer" && e.type !== "start");
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+    <div className={layout === "split" ? "mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" : "space-y-5"}>
       <form onSubmit={run} className="space-y-4 self-start rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
         <label className="block text-sm">
           <span className="font-medium">Task</span>
