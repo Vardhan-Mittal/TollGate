@@ -5,8 +5,36 @@ crawlers and agents, settled on PayPal. Humans read for free; AI agents get a
 price quote, pay from a PayPal-funded wallet, and receive a short-lived access
 token.
 
-> 🚧 Built for the *Build What's Next with PayPal and AI* hackathon. Work in
-> progress — see [PLAN.md](PLAN.md) for the roadmap.
+> Built for the *Build What's Next with PayPal and AI* hackathon.
+> **Live demo:** https://tollgate-jwuw.onrender.com (PayPal sandbox; no real money moves)
+
+## Why it matters
+
+AI systems read the web at enormous scale and send almost no readers back:
+
+- In July 2025, Cloudflare measured about **1,091 crawls per referral for OpenAI** and **about 38,000 for
+  Anthropic**, against **14:1 for Google Search**
+  ([Cloudflare](https://blog.cloudflare.com/crawlers-click-ai-bots-training/)).
+- When Google shows an AI summary, users click a result in **8%** of visits instead of **15%**, and click the
+  summary's own sources only **1%** of the time
+  ([Pew Research Center, via The Register](https://www.theregister.com/2025/07/22/google_ai_overviews_suppress_search/)).
+
+The writers, newsletters and small publishers whose work feeds those answers lose the traffic that paid for it.
+Tollgate lets them charge the machines instead.
+
+## How Tollgate is different
+
+Paying for crawls is not a new idea: Cloudflare's pay-per-crawl, TollBit and the x402 protocol all work on it.
+Tollgate's angle:
+
+1. **Settled on PayPal.** Publishers and agent operators use money rails they already have. No CDN lock-in,
+   no crypto wallets.
+2. **AI on both sides of the sale.** AI prices each article from its freshness, originality, depth and
+   scarcity; the buyer's AI reads the quote and decides, with a stated reason, whether it is worth paying for.
+3. **Agent-to-agent licensing.** A buyer agent and the publisher's agent negotiate bulk training licenses
+   under private limits and settle by PayPal invoice.
+4. **Wallets that never stall.** Agents spend from a PayPal-funded balance that refills from saved PayPal
+   (Vault) with no human present, so 2-cent reads never become 2-cent card charges.
 
 ## How it works
 
@@ -51,7 +79,7 @@ npm run db:seed              # demo publisher, 6 articles, demo agent wallet ($5
 npm run dev
 ```
 
-Pages: `/blog` (demo publisher), `/agent` (AI research agent console), `/wallet` (fund agents with PayPal), `/dashboard` (earnings, AI pricing, cash-out, finance assistant).
+Pages: `/live` (agent and publisher side by side), `/deals` (agent-to-agent negotiation), `/dashboard` (earnings, AI pricing, cash-out, finance assistant), `/wallet` (fund agents with PayPal), `/blog` (demo publisher), `/agent` (research agent on its own).
 
 To (re)price every article with AI: `npm run ai:price`.
 
@@ -115,6 +143,19 @@ npm run webhook:register -- https://your-app.example.com
 ```
 
 Put the printed id in `PAYPAL_WEBHOOK_ID`. Locally, top-ups are credited from the capture response instead.
+
+## Limitations and how a real deployment closes them
+
+- **Bot identification is self-declared.** The gate charges clients that identify as AI (known crawler
+  user-agents or a `Tollgate-Agent` header). Claiming to be `GPTBot` gets you a 402, not free content; the gap is
+  a bot that pretends to be an ordinary browser, which reads free like a human. Production deployments would
+  verify agents cryptographically with
+  [Web Bot Auth](https://datatracker.ietf.org/doc/html/draft-meunier-web-bot-auth-architecture-02)
+  (HTTP Message Signatures, RFC 9421) and combine that with published crawler IP ranges and behavioural
+  detection, treating unverified high-volume traffic as a bot.
+- **Single demo publisher.** Publisher sign-up and per-publisher settings are out of scope for the hackathon;
+  the demo runs one fictional publisher.
+- **Sandbox only.** All PayPal flows run against the PayPal sandbox.
 
 ## Tech
 

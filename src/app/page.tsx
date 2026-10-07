@@ -2,6 +2,21 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 
+const IMPACT = [
+  {
+    stat: "1,091 : 1",
+    text: "Pages OpenAI's crawlers fetched for every visitor they sent back to a site in July 2025. Google Search: 14 : 1.",
+    source: "Cloudflare",
+    href: "https://blog.cloudflare.com/crawlers-click-ai-bots-training/",
+  },
+  {
+    stat: "8% vs 15%",
+    text: "How often people click a result when Google shows an AI summary, versus when it doesn't. Only 1% click the summary's sources.",
+    source: "Pew Research Center",
+    href: "https://www.theregister.com/2025/07/22/google_ai_overviews_suppress_search/",
+  },
+];
+
 const STEPS = [
   {
     title: "Detect",
@@ -52,10 +67,26 @@ export default function Home() {
       <p className="text-sm font-medium uppercase tracking-widest text-emerald-600">Tollgate</p>
       <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">AI agents pay the web they read.</h1>
       <p className="mt-6 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-        AI crawlers and agents read millions of pages, and the people who wrote them get nothing. Tollgate is an open HTTP 402
-        paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles on
-        PayPal.
+        AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
+        402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
+        on PayPal.
       </p>
+
+      <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+        {IMPACT.map((item) => (
+          <a
+            key={item.stat}
+            href={item.href}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-zinc-200 p-4 transition hover:border-emerald-500 dark:border-zinc-800"
+          >
+            <p className="text-3xl font-bold tabular-nums">{item.stat}</p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{item.text}</p>
+            <p className="mt-2 text-xs text-zinc-500">Source: {item.source} ↗</p>
+          </a>
+        ))}
+      </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/live" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
