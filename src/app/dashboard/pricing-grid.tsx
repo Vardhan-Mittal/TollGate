@@ -19,8 +19,22 @@ export type PriceRow = {
   overridden: boolean;
 };
 
-const cents = (p: ValueFormatterParams<PriceRow, number | null>) =>
-  p.value == null ? "—" : p.value === 0 ? "free" : p.value < 100 ? `${p.value}¢` : `$${(p.value / 100).toFixed(2)}`;
+const fmt = (v: number | null | undefined) => (v == null ? "—" : v === 0 ? "free" : v < 100 ? `${v}¢` : `${(v / 100).toFixed(2)}`);
+const cents = (p: ValueFormatterParams<PriceRow, number | null>) => fmt(p.value);
+
+// Live price in bold with the AI suggestion underneath, so one column shows both.
+function priceCell(aiField: "aiReadCents" | "aiTrainCents") {
+  return function PriceCell(p: ICellRendererParams<PriceRow, number>) {
+    const ai = p.data?.[aiField];
+    const differs = ai != null && ai !== p.value;
+    return (
+      <div className="py-2 text-right leading-5">
+        <p className="font-semibold">{fmt(p.value)}</p>
+        <p className={`text-xs ${differs ? "text-amber-600" : "text-zinc-500"}`}>AI {fmt(ai)}</p>
+      </div>
+    );
+  };
+}
 
 export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
   const theme = useGridTheme();
@@ -52,7 +66,7 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
         field: "title",
         headerName: "Article & AI reasoning",
         flex: 3,
-        minWidth: 280,
+        minWidth: 220,
         wrapText: true,
         autoHeight: true,
         cellRenderer: (p: ICellRendererParams<PriceRow>) => (
@@ -63,36 +77,34 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
         ),
         tooltipField: "reasoning",
       },
-      { field: "valueScore", headerName: "AI value", width: 100, type: "rightAligned", sort: "desc" },
-      { field: "aiReadCents", headerName: "AI read", width: 100, valueFormatter: cents, type: "rightAligned" },
+      { field: "valueScore", headerName: "Value", width: 85, type: "rightAligned", sort: "desc", headerTooltip: "AI value score, 0-100" },
       {
         field: "readCents",
-        headerName: "Your read ✎",
-        width: 125,
+        headerName: "Read ✎",
+        width: 100,
         editable: true,
         cellEditor: "agNumberCellEditor",
         cellEditorParams: { min: 0, precision: 0 },
         valueFormatter: cents,
         type: "rightAligned",
-        cellClass: "font-semibold",
+        cellRenderer: priceCell("aiReadCents"),
       },
-      { field: "aiTrainCents", headerName: "AI train", width: 100, valueFormatter: cents, type: "rightAligned" },
       {
         field: "trainCents",
-        headerName: "Your train ✎",
-        width: 130,
+        headerName: "Train ✎",
+        width: 100,
         editable: true,
         cellEditor: "agNumberCellEditor",
         cellEditorParams: { min: 0, precision: 0 },
         valueFormatter: cents,
         type: "rightAligned",
-        cellClass: "font-semibold",
+        cellRenderer: priceCell("aiTrainCents"),
       },
-      { field: "paidReads", headerName: "Paid reads", width: 110, type: "rightAligned" },
+      { field: "paidReads", headerName: "Reads", width: 85, type: "rightAligned", headerTooltip: "Paid agent reads" },
       {
         field: "overridden",
         headerName: "Priced by",
-        width: 150,
+        width: 135,
         cellRenderer: (p: ICellRendererParams<PriceRow>) =>
           p.data?.overridden ? (
             <button
