@@ -12,6 +12,7 @@ const STYLE: Record<LiveEvent["kind"], { badge: string; tone: string; sign: stri
   earning: { badge: "Earned", tone: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300", sign: "+" },
   topup: { badge: "PayPal", tone: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300", sign: "+" },
   auto_recharge: { badge: "PayPal auto", tone: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300", sign: "+" },
+  deal: { badge: "Deal", tone: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300", sign: "" },
   payout: { badge: "Payout", tone: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300", sign: "−" },
 };
 

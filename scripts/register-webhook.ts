@@ -16,6 +16,7 @@ const EVENTS = [
   "PAYMENT.PAYOUTS-ITEM.RETURNED",
   "PAYMENT.PAYOUTS-ITEM.BLOCKED",
   "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+  "INVOICING.INVOICE.PAID",
 ];
 
 async function main() {
@@ -31,20 +32,31 @@ async function main() {
   });
   const { access_token } = await tokenRes.json();
 
-  const res = await fetch(`${base}/v1/notifications/webhooks`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      url: `${origin.replace(/\/$/, "")}/api/paypal/webhook`,
-      event_types: EVENTS.map((name) => ({ name })),
-    }),
-  });
+  const url = `${origin.replace(/\/$/, "")}/api/paypal/webhook`;
+  const headers = { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" };
+  const eventTypes = EVENTS.map((name) => ({ name }));
+
+  // Re-running updates the existing webhook's events instead of failing on a duplicate URL.
+  const list = await (await fetch(`${base}/v1/notifications/webhooks`, { headers })).json();
+  const existing = (list.webhooks as { id: string; url: string }[] | undefined)?.find((w) => w.url === url);
+
+  const res = existing
+    ? await fetch(`${base}/v1/notifications/webhooks/${existing.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify([{ op: "replace", path: "/event_types", value: eventTypes }]),
+      })
+    : await fetch(`${base}/v1/notifications/webhooks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ url, event_types: eventTypes }),
+      });
   const body = await res.json();
   if (!res.ok) {
     console.error("PayPal refused the webhook:", body);
     process.exit(1);
   }
-  console.log(`Webhook created. Set this in your environment:\nPAYPAL_WEBHOOK_ID=${body.id}`);
+  console.log(`Webhook ${existing ? "updated" : "created"}. Set this in your environment:\nPAYPAL_WEBHOOK_ID=${body.id}`);
 }
 
 main().catch((err) => {

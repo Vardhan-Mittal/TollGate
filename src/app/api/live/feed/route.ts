@@ -7,7 +7,7 @@ import { accounts } from "@/lib/tollgate/service";
 export type LiveEvent = {
   id: string;
   at: string;
-  kind: "quote" | "earning" | "topup" | "auto_recharge" | "payout";
+  kind: "quote" | "earning" | "topup" | "auto_recharge" | "payout" | "deal";
   title: string;
   detail: string;
   amountCents: number;
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const dayStart = new Date(Date.now() - 86_400_000);
   const now = new Date();
 
-  const [publisher, earnedToday, paidReadsToday, quotes, grants, topUps, payouts] = await Promise.all([
+  const [publisher, earnedToday, paidReadsToday, quotes, grants, topUps, payouts, deals] = await Promise.all([
     prisma.publisher.findUniqueOrThrow({ where: { id: DEMO_PUBLISHER_ID } }),
     prisma.ledgerEntry.aggregate({
       _sum: { amountCents: true },
@@ -57,6 +57,12 @@ export async function GET(req: NextRequest) {
     prisma.payout.findMany({
       where: { publisherId: DEMO_PUBLISHER_ID, createdAt: { gt: since } },
       orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.deal.findMany({
+      where: { publisherId: DEMO_PUBLISHER_ID, updatedAt: { gt: since }, status: { in: ["INVOICED", "PAID"] } },
+      include: { agent: true },
+      orderBy: { updatedAt: "desc" },
       take: 10,
     }),
   ]);
@@ -93,6 +99,14 @@ export async function GET(req: NextRequest) {
       title: "Cashed out with PayPal Payouts",
       detail: p.status.toLowerCase(),
       amountCents: p.amountCents,
+    })),
+    ...deals.map((d) => ({
+      id: `d-${d.id}-${d.status}`,
+      at: d.updatedAt.toISOString(),
+      kind: "deal" as const,
+      title: d.status === "PAID" ? "Training license paid via PayPal invoice" : "AI agents agreed a training license · PayPal invoice sent",
+      detail: `${d.agent.name} · ${d.resourceIds.length} articles`,
+      amountCents: d.agreedPriceCents ?? 0,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 

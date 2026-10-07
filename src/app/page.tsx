@@ -25,18 +25,21 @@ const PAYPAL = [
   ["Orders v2 + JS SDK v6", "Agent owners top up wallets with the PayPal button"],
   ["Vault (saved PayPal)", "Wallets auto-recharge with no human present"],
   ["Payouts", "Publishers cash out their AI earnings"],
-  ["Agent Toolkit", "The finance assistant drafts and sends PayPal invoices"],
+  ["Agent Toolkit", "Agents create and send PayPal invoices for licenses and billing"],
+  ["Invoicing webhooks", "Paying a license invoice activates it automatically"],
   ["Webhooks", "Signed, de-duplicated payment confirmations"],
 ];
 
 const AI = [
   ["Seller-side pricing", "Gemini appraises freshness, originality, depth and scarcity, and prices each article within the publisher's limits."],
   ["Buyer-side agent", "A research agent reads each 402 quote and decides pay or skip, with a reason, under a hard budget."],
+  ["Agent-to-agent deals", "A buyer agent and the publisher's agent negotiate a bulk training license under private limits, then settle by PayPal invoice."],
   ["Finance assistant", "Answers earnings questions, cashes out and invoices, and waits for a human yes before moving money."],
 ];
 
 const DEMOS = [
   { href: "/live", title: "Live: agent and publisher side by side", text: "Watch an AI pay and the publisher earn, in real time." },
+  { href: "/deals", title: "Two AI agents negotiate a deal", text: "A bulk training license, bargained by AI and settled by PayPal invoice." },
   { href: "/agent", title: "Run the research agent", text: "Watch an AI decide what is worth paying for." },
   { href: "/dashboard", title: "Publisher dashboard", text: "AI pricing, traffic, payouts and the finance assistant." },
   { href: "/wallet", title: "Agent wallet", text: "Top up with PayPal and turn on auto-recharge." },

@@ -34,6 +34,9 @@ Discovery document: `/.well-known/tollgate.json`
 | AI research agent with pay/skip decisions (buyer side) | ✅ working |
 | Publisher finance assistant (PayPal Agent Toolkit) | ✅ working |
 | AI traffic & revenue grid (AG Grid) | ✅ working |
+| Live split-screen of agent and publisher (`/live`) | ✅ working |
+| Editable AI pricing grid with publisher overrides (AG Grid) | ✅ working |
+| Agent-to-agent license negotiation settled by PayPal invoice (`/deals`) | ✅ working |
 | Public demo guardrails, Render blueprint | ✅ ready |
 
 ## Run it locally
@@ -71,6 +74,7 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 |---|---|---|
 | **Pricing engine** (`src/lib/ai/pricing.ts`) | Scores freshness, originality, depth and scarcity; sets read/train prices, a teaser and a plain-English reason | Prices clamped to publisher limits; scores normalised |
 | **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; wallet never below zero |
+| **Negotiating agents** (`src/lib/ai/negotiation.ts`) | A buyer agent and the publisher's agent bargain over a bulk training license, each with private limits | Buyer can never exceed its budget, publisher never goes below its floor; crossing offers close the deal; the invoice is created by code via the PayPal Agent Toolkit |
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
 
 Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
@@ -91,6 +95,8 @@ Everything runs on the **PayPal sandbox**: no real money moves.
 
 | Try this | Where |
 |---|---|
+| See the buyer agent and the publisher side by side | `/live` → **Run research agent** |
+| Watch two AI agents negotiate a training license | `/deals` → **Start negotiation** → pay the PayPal invoice with the sandbox buyer |
 | Watch an AI agent read 402 quotes and pay or skip | `/agent` → pick a preset → **Run research agent** |
 | See AI pricing, traffic (AG Grid), payouts, finance assistant | `/dashboard` |
 | Top up an agent wallet with PayPal | `/wallet` → **PayPal** button → log in with the sandbox buyer below |

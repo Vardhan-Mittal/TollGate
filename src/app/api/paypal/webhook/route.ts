@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { markDealPaid } from "@/lib/deals";
 import { valueToCents } from "@/lib/paypal/orders";
 import { verifyWebhook } from "@/lib/paypal/webhooks";
 import { applyBatchStatus } from "@/lib/payouts";
@@ -52,6 +53,12 @@ async function handle(event: WebhookEvent) {
       if (!topUp) return; // not a Tollgate wallet top-up
       const orderId = (r.supplementary_data as { related_ids?: { order_id?: string } } | undefined)?.related_ids?.order_id;
       await creditCapture({ topUpId, captureId: r.id as string, amountCents: valueToCents(amount.value), orderId });
+      return;
+    }
+
+    case "INVOICING.INVOICE.PAID": {
+      const deal = await prisma.deal.findUnique({ where: { paypalInvoiceId: r.id as string } });
+      if (deal) await markDealPaid(deal.id);
       return;
     }
 

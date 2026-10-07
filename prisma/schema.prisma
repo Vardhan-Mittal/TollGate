@@ -19,6 +19,7 @@ model Publisher {
   createdAt    DateTime   @default(now())
   resources    Resource[]
   payouts      Payout[]
+  deals        Deal[]
 }
 
 model Resource {
@@ -57,6 +58,7 @@ model Agent {
   quotes           Quote[]
   grants           AccessGrant[]
   topUps           TopUp[]
+  deals            Deal[]
 
   // PayPal vault token saved with the operator's consent; used for auto-recharge.
   paypalVaultId              String?
@@ -112,6 +114,7 @@ enum LedgerKind {
   FEE
   PAYOUT
   PAYOUT_REVERSAL
+  LICENSE_SALE
 }
 
 model LedgerEntry {
@@ -193,4 +196,36 @@ model WebhookEvent {
   id         String   @id
   eventType  String
   receivedAt DateTime @default(now())
+}
+
+enum DealStatus {
+  NEGOTIATING
+  NO_DEAL
+  INVOICED
+  PAID
+  FAILED
+}
+
+// A bulk training license negotiated between a buyer agent and the
+// publisher's agent, settled with a PayPal invoice.
+model Deal {
+  id               String     @id @default(cuid())
+  agentId          String
+  agent            Agent      @relation(fields: [agentId], references: [id])
+  publisherId      String
+  publisher        Publisher  @relation(fields: [publisherId], references: [id])
+  resourceIds      String[]
+  listPriceCents   Int
+  budgetCents      Int
+  floorCents       Int
+  agreedPriceCents Int?
+  status           DealStatus @default(NEGOTIATING)
+  transcript       Json       @default("[]")
+  buyerEmail       String?
+  paypalInvoiceId  String?    @unique
+  invoiceUrl       String?
+  failureReason    String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  paidAt           DateTime?
 }

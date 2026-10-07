@@ -4,6 +4,7 @@ const LINKS = [
   { href: "/blog", label: "Demo publisher" },
   { href: "/live", label: "Live demo" },
   { href: "/agent", label: "Research agent" },
+  { href: "/deals", label: "Agent deals" },
   { href: "/wallet", label: "Agent wallet" },
   { href: "/dashboard", label: "Publisher dashboard" },
 ];
