@@ -10,6 +10,7 @@ import { accounts } from "@/lib/tollgate/service";
 import { CashOutForm } from "./cash-out-form";
 import { FinanceAssistant } from "./finance-assistant";
 import { RepriceButton } from "./reprice-button";
+import { PricingGrid, type PriceRow } from "./pricing-grid";
 import { TrafficGrid, type TrafficRow } from "./traffic-grid";
 
 export default function DashboardPage() {
@@ -69,6 +70,21 @@ async function Dashboard() {
       publisherCents: paid ? net : 0,
     };
   });
+
+  const priceRows: PriceRow[] = resources.map((r) => ({
+    id: r.id,
+    title: r.title,
+    reasoning: r.aiReasoning,
+    valueScore: r.valueScore,
+    aiReadCents: r.aiPriceReadCents,
+    aiTrainCents: r.aiPriceTrainCents,
+    readCents: r.priceReadCents,
+    trainCents: r.priceTrainCents,
+    paidReads: r._count.grants,
+    overridden: r.priceOverridden,
+  }));
+  // Remount the grid when the server data changes (e.g. after AI re-pricing).
+  const priceRowsKey = priceRows.map((r) => `${r.id}:${r.readCents}:${r.trainCents}:${r.aiReadCents}:${r.valueScore}`).join("|");
 
   const stats = [
     { label: "Available to cash out", value: `$${(publisher.balanceCents / 100).toFixed(2)}` },
@@ -147,39 +163,13 @@ async function Dashboard() {
           <div>
             <h2 className="font-semibold">Articles &amp; AI pricing</h2>
             <p className="text-sm text-zinc-500">
-              AI appraises each article; prices are clamped to your limits ({formatCents(PRICE_LIMITS.readMinCents)}–
-              {formatCents(PRICE_LIMITS.readMaxCents)} to read, up to {formatCents(PRICE_LIMITS.trainMaxCents)} to train).
+              AI appraises each article and suggests prices within your limits ({formatCents(PRICE_LIMITS.readMinCents)}–
+              {formatCents(PRICE_LIMITS.readMaxCents)} to read, up to {formatCents(PRICE_LIMITS.trainMaxCents)} to train). Override any price in the grid; your prices win.
             </p>
           </div>
           <RepriceButton />
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-zinc-500">
-              <tr>
-                <th className="py-2 pr-4 font-medium">Article &amp; AI reasoning</th>
-                <th className="py-2 pr-4 font-medium">Value</th>
-                <th className="py-2 pr-4 font-medium">Read</th>
-                <th className="py-2 pr-4 font-medium">Train</th>
-                <th className="py-2 font-medium">Paid reads</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 align-top dark:divide-zinc-800">
-              {resources.map((r) => (
-                <tr key={r.id}>
-                  <td className="py-3 pr-4">
-                    <p className="font-medium">{r.title}</p>
-                    {r.aiReasoning && <p className="mt-1 max-w-2xl text-xs text-zinc-500">{r.aiReasoning}</p>}
-                  </td>
-                  <td className="py-3 pr-4 tabular-nums">{r.valueScore ?? "—"}</td>
-                  <td className="py-3 pr-4 tabular-nums">{r.priceReadCents ? formatCents(r.priceReadCents) : "free"}</td>
-                  <td className="py-3 pr-4 tabular-nums">{r.priceTrainCents ? formatCents(r.priceTrainCents) : "free"}</td>
-                  <td className="py-3 tabular-nums">{r._count.grants}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PricingGrid key={priceRowsKey} rows={priceRows} />
       </section>
     </div>
   );

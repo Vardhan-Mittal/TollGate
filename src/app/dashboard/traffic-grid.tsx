@@ -1,19 +1,9 @@
 "use client";
 
-import {
-  AllCommunityModule,
-  ModuleRegistry,
-  colorSchemeDark,
-  colorSchemeLight,
-  themeQuartz,
-  type ColDef,
-  type GridApi,
-  type ValueFormatterParams,
-} from "ag-grid-community";
+import type { ColDef, GridApi, ValueFormatterParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { useMemo, useRef, useState } from "react";
+import { useGridTheme } from "./grid-theme";
 
 export type TrafficRow = {
   time: string;
@@ -27,31 +17,10 @@ export type TrafficRow = {
 
 const money = (p: ValueFormatterParams<TrafficRow, number>) => (p.value == null ? "" : `$${(p.value / 100).toFixed(2)}`);
 
-function subscribeDark(callback: () => void) {
-  const mq = window.matchMedia("(prefers-color-scheme: dark)");
-  mq.addEventListener("change", callback);
-  return () => mq.removeEventListener("change", callback);
-}
-
 export function TrafficGrid({ rows }: { rows: TrafficRow[] }) {
   const gridApi = useRef<GridApi<TrafficRow> | null>(null);
   const [search, setSearch] = useState("");
-  const dark = useSyncExternalStore(
-    subscribeDark,
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
-    () => false,
-  );
-
-  const theme = useMemo(
-    () =>
-      themeQuartz.withPart(dark ? colorSchemeDark : colorSchemeLight).withParams({
-        accentColor: "#059669",
-        fontFamily: "inherit",
-        headerFontWeight: 600,
-        wrapperBorderRadius: 12,
-      }),
-    [dark],
-  );
+  const theme = useGridTheme();
 
   const columns = useMemo<ColDef<TrafficRow>[]>(
     () => [

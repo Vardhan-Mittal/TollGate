@@ -86,8 +86,12 @@ export async function priceResource(resourceId: string) {
   await prisma.resource.update({
     where: { id: resourceId },
     data: {
-      priceReadCents: result.readPriceCents,
-      priceTrainCents: result.trainPriceCents,
+      aiPriceReadCents: result.readPriceCents,
+      aiPriceTrainCents: result.trainPriceCents,
+      // A price the publisher set by hand is never overwritten by the AI.
+      ...(resource.priceOverridden
+        ? {}
+        : { priceReadCents: result.readPriceCents, priceTrainCents: result.trainPriceCents }),
       teaser: result.teaser,
       valueScore: result.valueScore,
       aiReasoning: `${result.reasoning} (freshness ${freshness}/10, originality ${originality}/10, depth ${depth}/10, scarcity ${scarcity}/10 · ${result.model})`,

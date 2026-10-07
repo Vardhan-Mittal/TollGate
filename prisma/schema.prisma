@@ -32,6 +32,10 @@ model Resource {
   teaser          String
   priceReadCents  Int
   priceTrainCents Int
+  // The AI's latest suggestion. Live prices follow it unless the publisher overrides.
+  aiPriceReadCents  Int?
+  aiPriceTrainCents Int?
+  priceOverridden   Boolean @default(false)
   aiReasoning     String?
   valueScore      Int?
   publishedAt     DateTime
