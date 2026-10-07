@@ -43,6 +43,7 @@ export async function issueQuote(opts: {
   path: string;
   license: LicenseType;
   origin: string;
+  botName?: string;
   reason?: QuoteResponse["reason"];
 }): Promise<GateQuote> {
   const resource = await prisma.resource.findUnique({ where: { path: opts.path } });
@@ -56,6 +57,7 @@ export async function issueQuote(opts: {
       resourceId: resource.id,
       license: toDbLicense(opts.license),
       priceCents,
+      botName: opts.botName,
       expiresAt: new Date(Date.now() + QUOTE_TTL_SECONDS * 1000),
     },
   });

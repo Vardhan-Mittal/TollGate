@@ -61,7 +61,7 @@ async function Dashboard() {
     const net = q.priceCents - Math.floor((q.priceCents * PLATFORM_FEE_BPS) / 10_000);
     return {
       time: (q.paidAt ?? q.createdAt).toISOString(),
-      agent: q.agent?.name ?? "Unpaid quote",
+      agent: q.agent?.name ?? q.botName ?? "Unknown bot",
       article: q.resource.title,
       license: q.license === "TRAIN" ? "train" : "read",
       outcome: paid ? "paid" : "quoted",

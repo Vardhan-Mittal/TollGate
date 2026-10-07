@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     botName: bot.isBot ? bot.botName : undefined,
   };
 
-  const quote = await issueQuote({ path, license, origin, reason });
+  const quote = await issueQuote({ path, license, origin, reason, botName: visit.botName });
 
   if (quote.kind === "not_found") {
     return NextResponse.json({ error: "not_found", message: "No such resource." }, { status: 404 });

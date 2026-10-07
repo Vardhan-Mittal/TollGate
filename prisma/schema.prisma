@@ -79,6 +79,8 @@ model Quote {
   agent      Agent?       @relation(fields: [agentId], references: [id])
   license    License
   priceCents Int
+  // Who asked: the bot user-agent or Tollgate-Agent name, kept even if never paid.
+  botName    String?
   status     QuoteStatus  @default(OPEN)
   expiresAt  DateTime
   paidAt     DateTime?
