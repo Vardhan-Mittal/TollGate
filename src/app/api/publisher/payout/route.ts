@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse } from "@/lib/http";
 import { requestPayout } from "@/lib/payouts";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
@@ -8,6 +9,9 @@ const Body = z.object({ email: z.string() });
 
 // Cashes out the publisher's whole balance to a PayPal account via Payouts.
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "payout", 5, 10 * 60_000);
+  if (limited) return limited;
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_request", message: "Body must be { email }." }, { status: 400 });
 

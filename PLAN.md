@@ -171,9 +171,12 @@ tollgate/                       Next.js (App Router, TypeScript)
 - [x] Publisher copilot with `@paypal/agent-toolkit/ai-sdk`
 
 ### Week 4 — Oct 28–Nov 3: Product polish
-- [ ] Dashboard: earnings over time, top paying bots, per-article AI price + reasoning, payout history
-- [ ] Wallet page: balance, ledger, auto-recharge settings
-- [ ] Landing page explaining the protocol in 10 seconds
+- [x] Public-demo guardrails (rate limits, locked payout account, example-only invoices)
+- [x] AG Grid AI traffic & revenue log (sponsor prize)
+- [x] Render blueprint (render.yaml)
+- [x] Dashboard: earnings over time, top paying bots, per-article AI price + reasoning, payout history
+- [x] Wallet page: balance, ledger, auto-recharge settings
+- [x] Landing page explaining the protocol in 10 seconds
 - [ ] `npm`-style snippet: "add Tollgate to your Next.js / Express site in 3 lines"
 - [ ] *(Stretch)* expose Tollgate as an **MCP tool** so any MCP agent (e.g. Claude) can pay gates
 - [ ] *(Stretch)* bot-behavior detection

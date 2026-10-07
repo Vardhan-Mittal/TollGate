@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 import { PRICE_LIMITS } from "@/lib/ai/pricing";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE, DEMO_PAYOUT_EMAIL } from "@/lib/demo";
 import { formatCents } from "@/lib/money";
 import { MIN_PAYOUT_CENTS, refreshPayout } from "@/lib/payouts";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
+import { PLATFORM_FEE_BPS } from "@/lib/tollgate/protocol";
 import { accounts } from "@/lib/tollgate/service";
 import { CashOutForm } from "./cash-out-form";
 import { FinanceAssistant } from "./finance-assistant";
 import { RepriceButton } from "./reprice-button";
+import { TrafficGrid, type TrafficRow } from "./traffic-grid";
 
 export default function DashboardPage() {
   return (
@@ -33,7 +36,7 @@ async function Dashboard() {
   await Promise.all(pending.map((p) => refreshPayout(p.id).catch((err) => console.error("refreshPayout", err))));
 
   const account = accounts.publisher(DEMO_PUBLISHER_ID);
-  const [publisher, earned, paidReads, quotes, payouts, visits, resources] = await Promise.all([
+  const [publisher, earned, paidReads, quotes, payouts, visits, resources, quoteLog] = await Promise.all([
     prisma.publisher.findUniqueOrThrow({ where: { id: DEMO_PUBLISHER_ID } }),
     prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { account, kind: "EARNING" } }),
     prisma.accessGrant.count({ where: { resource: { publisherId: DEMO_PUBLISHER_ID } } }),
@@ -45,7 +48,27 @@ async function Dashboard() {
       orderBy: { publishedAt: "desc" },
       include: { _count: { select: { grants: true } } },
     }),
+    prisma.quote.findMany({
+      where: { resource: { publisherId: DEMO_PUBLISHER_ID } },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+      include: { resource: true, agent: true },
+    }),
   ]);
+
+  const trafficRows: TrafficRow[] = quoteLog.map((q) => {
+    const paid = q.status === "PAID";
+    const net = q.priceCents - Math.floor((q.priceCents * PLATFORM_FEE_BPS) / 10_000);
+    return {
+      time: (q.paidAt ?? q.createdAt).toISOString(),
+      agent: q.agent?.name ?? "Unpaid quote",
+      article: q.resource.title,
+      license: q.license === "TRAIN" ? "train" : "read",
+      outcome: paid ? "paid" : "quoted",
+      priceCents: paid ? q.priceCents : 0,
+      publisherCents: paid ? net : 0,
+    };
+  });
 
   const stats = [
     { label: "Available to cash out", value: `$${(publisher.balanceCents / 100).toFixed(2)}` },
@@ -68,7 +91,9 @@ async function Dashboard() {
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
           <h2 className="mb-4 font-semibold">Cash out</h2>
-          <CashOutForm defaultEmail={publisher.paypalEmail ?? ""} balanceCents={publisher.balanceCents} minCents={MIN_PAYOUT_CENTS} />
+          <CashOutForm
+            defaultEmail={publisher.paypalEmail ?? ""}
+            lockedEmail={DEMO_MODE ? DEMO_PAYOUT_EMAIL : null} balanceCents={publisher.balanceCents} minCents={MIN_PAYOUT_CENTS} />
 
           <h3 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Payout history</h3>
           {payouts.length === 0 ? (
@@ -112,6 +137,8 @@ async function Dashboard() {
           )}
         </section>
       </div>
+
+      <TrafficGrid rows={trafficRows} />
 
       <FinanceAssistant />
 

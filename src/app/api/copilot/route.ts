@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 import { runFinanceCopilot } from "@/lib/ai/finance-copilot";
 import { errorResponse } from "@/lib/http";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
@@ -12,6 +13,9 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "copilot", 20, 10 * 60_000);
+  if (limited) return limited;
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "bad_request", message: "Send { messages }." }, { status: 400 });
 

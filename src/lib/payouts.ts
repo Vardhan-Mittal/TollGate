@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE, DEMO_PAYOUT_EMAIL } from "@/lib/demo";
 import { paypalRequest } from "@/lib/paypal/client";
 import { centsToValue } from "@/lib/paypal/orders";
 import { TollgateError, accounts } from "@/lib/tollgate/service";
@@ -21,7 +22,9 @@ const FAILED_ITEM_STATUSES = new Set(["FAILED", "RETURNED", "BLOCKED", "REFUNDED
  * the batch, the reservation is reversed.
  */
 export async function requestPayout(publisherId: string, receiverEmail: string) {
-  const email = z.email().safeParse(receiverEmail.trim());
+  // The public demo always pays the configured sandbox publisher account.
+  const target = DEMO_MODE && DEMO_PAYOUT_EMAIL ? DEMO_PAYOUT_EMAIL : receiverEmail;
+  const email = z.email().safeParse(target.trim());
   if (!email.success) throw new TollgateError(400, "invalid_email", "Enter a valid PayPal email address.");
 
   const payout = await prisma.$transaction(async (tx) => {

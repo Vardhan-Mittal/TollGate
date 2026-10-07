@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE } from "@/lib/demo";
 import { deletePaymentToken } from "@/lib/paypal/vault";
 import { generateAgentKey } from "@/lib/tollgate/keys";
 
@@ -57,6 +58,8 @@ export async function disableAutoRecharge(form: FormData) {
 }
 
 export async function forgetPayPal(form: FormData) {
+  // Keeps the shared demo wallet able to auto-recharge for every visitor.
+  if (DEMO_MODE) return;
   const agentId = String(form.get("agentId"));
   const agent = await prisma.agent.findUnique({ where: { id: agentId } });
   if (agent?.paypalVaultId) await deletePaymentToken(agent.paypalVaultId);

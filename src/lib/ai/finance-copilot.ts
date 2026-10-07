@@ -3,6 +3,7 @@ import { PayPalMCPToolkit } from "@paypal/agent-toolkit/mcp";
 import { generateText, stepCountIs, tool, type ModelMessage, type ToolSet } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { isAllowedInvoiceRecipient } from "@/lib/demo";
 import { accessToken } from "@/lib/paypal/client";
 import { requestPayout } from "@/lib/payouts";
 import { accounts } from "@/lib/tollgate/service";
@@ -44,6 +45,13 @@ async function paypalToolkitTools(publisherConfirmed: boolean, log: (a: CopilotA
         // The toolkit ships Zod 3 schemas; AI SDK accepts them as Standard Schema.
         inputSchema: def.parameters as unknown as z.ZodType<Record<string, unknown>>,
         execute: async (args: Record<string, unknown>) => {
+          if (def.method === "create_invoice") {
+            const recipients = (args.primary_recipients as { billing_info?: { email_address?: string } }[] | undefined) ?? [];
+            const blocked = recipients.map((r) => r.billing_info?.email_address ?? "").find((e) => !isAllowedInvoiceRecipient(e));
+            if (blocked !== undefined) {
+              return { status: "refused", message: "In the public demo, invoices can only be addressed to example.com or .example addresses." };
+            }
+          }
           if (def.method === "send_invoice" && !publisherConfirmed) {
             return { status: "needs_confirmation", message: "Ask the user to confirm sending this invoice." };
           }

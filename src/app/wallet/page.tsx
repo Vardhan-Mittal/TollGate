@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PayPalTopUp } from "@/components/paypal-top-up";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE } from "@/lib/demo";
 import { formatCents } from "@/lib/money";
 import { accounts } from "@/lib/tollgate/service";
 import { disableAutoRecharge, forgetPayPal, saveAutoRecharge } from "./actions";
@@ -95,10 +96,12 @@ async function AgentList() {
                           <button className="text-zinc-600 underline dark:text-zinc-400">Turn off</button>
                         </form>
                       )}
-                      <form action={forgetPayPal}>
-                        <input type="hidden" name="agentId" value={agent.id} />
-                        <button className="text-red-600 underline">Remove saved PayPal</button>
-                      </form>
+                      {!DEMO_MODE && (
+                        <form action={forgetPayPal}>
+                          <input type="hidden" name="agentId" value={agent.id} />
+                          <button className="text-red-600 underline">Remove saved PayPal</button>
+                        </form>
+                      )}
                     </div>
                   </div>
                 ) : (

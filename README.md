@@ -33,6 +33,8 @@ Discovery document: `/.well-known/tollgate.json`
 | AI pricing engine (seller side) | ✅ working |
 | AI research agent with pay/skip decisions (buyer side) | ✅ working |
 | Publisher finance assistant (PayPal Agent Toolkit) | ✅ working |
+| AI traffic & revenue grid (AG Grid) | ✅ working |
+| Public demo guardrails, Render blueprint | ✅ ready |
 
 ## Run it locally
 
@@ -72,6 +74,31 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
 
 Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
+
+## Deploy on Render
+
+1. In [Render](https://render.com), choose **New + > Blueprint** and select this repository. Render reads [`render.yaml`](render.yaml).
+2. Fill in the secret values when prompted (same values as `.env.local`; `TOLLGATE_TOKEN_SECRET` is generated for you).
+3. After the first deploy, register the PayPal webhook and add the printed id as `PAYPAL_WEBHOOK_ID`:
+   ```bash
+   npm run webhook:register -- https://<your-service>.onrender.com
+   ```
+4. During judging, switch the service to a paid instance (or keep it warm) so it never sleeps.
+
+## Testing instructions for judges
+
+Everything runs on the **PayPal sandbox**: no real money moves.
+
+| Try this | Where |
+|---|---|
+| Watch an AI agent read 402 quotes and pay or skip | `/agent` → pick a preset → **Run research agent** |
+| See AI pricing, traffic (AG Grid), payouts, finance assistant | `/dashboard` |
+| Top up an agent wallet with PayPal | `/wallet` → **PayPal** button → log in with the sandbox buyer below |
+| Hit the paywall yourself | `curl -i -A "GPTBot" <site>/blog/q3-2026-battery-cell-price-survey` |
+
+Sandbox buyer login (fake money only): provided in the Devpost submission's testing instructions.
+
+Public-demo guardrails (`DEMO_MODE=true`): payouts always go to the demo publisher's sandbox account, invoices only to `example.com` addresses, AI endpoints are rate-limited, and the shared saved PayPal account cannot be removed.
 
 ## PayPal webhooks (deployed only)
 

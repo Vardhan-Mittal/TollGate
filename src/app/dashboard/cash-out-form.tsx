@@ -3,9 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function CashOutForm({ defaultEmail, balanceCents, minCents }: { defaultEmail: string; balanceCents: number; minCents: number }) {
+export function CashOutForm({
+  defaultEmail,
+  lockedEmail,
+  balanceCents,
+  minCents,
+}: {
+  defaultEmail: string;
+  lockedEmail: string | null;
+  balanceCents: number;
+  minCents: number;
+}) {
   const router = useRouter();
-  const [email, setEmail] = useState(defaultEmail);
+  const [email, setEmail] = useState(lockedEmail ?? defaultEmail);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const enough = balanceCents >= minCents;
@@ -38,9 +48,13 @@ export function CashOutForm({ defaultEmail, balanceCents, minCents }: { defaultE
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          readOnly={!!lockedEmail}
           placeholder="you@example.com"
           className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
         />
+        {lockedEmail && (
+          <span className="mt-1 block text-xs text-zinc-500">Public demo: payouts always go to the demo publisher&apos;s sandbox account.</span>
+        )}
       </label>
       <button
         disabled={pending || !enough}
