@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { publicOrigin } from "@/lib/origin";
 import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse } from "@/lib/http";
 import { startTopUp } from "@/lib/wallet";
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { orderId } = await startTopUp({ ...parsed.data, origin: req.nextUrl.origin });
+    const { orderId } = await startTopUp({ ...parsed.data, origin: publicOrigin(req) });
     return NextResponse.json({ orderId });
   } catch (err) {
     return errorResponse(err);

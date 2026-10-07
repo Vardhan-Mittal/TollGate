@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { publicOrigin } from "@/lib/origin";
 import { rateLimit } from "@/lib/rate-limit";
 import { runResearchAgent, type AgentEvent } from "@/lib/ai/research-agent";
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const emit = (event: AgentEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       try {
-        await runResearchAgent({ ...parsed.data, origin: req.nextUrl.origin, agentKey, emit });
+        await runResearchAgent({ ...parsed.data, origin: publicOrigin(req), agentKey, emit });
       } catch (err) {
         console.error("agent run failed", err);
         emit({ type: "error", message: err instanceof Error ? err.message : "Agent run failed." });

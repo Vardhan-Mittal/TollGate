@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicOrigin } from "@/lib/origin";
 import { ACCESS_TOKEN_TTL_SECONDS, QUOTE_TTL_SECONDS, TOLLGATE_VERSION } from "@/lib/tollgate/protocol";
 
 // Discovery document so agents can learn how to pay this site.
 export function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  const origin = publicOrigin(req);
   return NextResponse.json({
     tollgate_version: TOLLGATE_VERSION,
     currency: "USD",

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicOrigin } from "@/lib/origin";
 import { prisma } from "@/lib/db";
 import { detectBot } from "@/lib/tollgate/bots";
 import {
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
     reasonParam === "token_expired" || reasonParam === "token_invalid" ? reasonParam : undefined;
 
   const license = parseLicense(req.headers.get(HEADERS.license));
-  const origin = req.nextUrl.origin;
+  const origin = publicOrigin(req);
   const bot = detectBot(req.headers);
   const visit = {
     path,
