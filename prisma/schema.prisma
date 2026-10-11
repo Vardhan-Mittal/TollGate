@@ -59,6 +59,11 @@ model Agent {
   grants           AccessGrant[]
   topUps           TopUp[]
   deals            Deal[]
+  riskEvents       RiskEvent[]
+
+  // Set by the Spend Guardian when a payment looks unsafe; cleared by a human.
+  frozenAt     DateTime?
+  frozenReason String?
 
   // PayPal vault token saved with the operator's consent; used for auto-recharge.
   paypalVaultId              String?
@@ -232,4 +237,30 @@ model Deal {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   paidAt           DateTime?
+}
+
+enum RiskDecision {
+  ALLOW
+  FLAG
+  HOLD
+}
+
+// One row per payment the Spend Guardian flagged or held, with the signals
+// behind the decision and what the human decided afterwards.
+model RiskEvent {
+  id         String       @id @default(cuid())
+  agentId    String
+  agent      Agent        @relation(fields: [agentId], references: [id])
+  decision   RiskDecision
+  score      Float
+  signals    Json
+  summary    String
+  aiNote     String?
+  resourceId String?
+  priceCents Int?
+  resolution String?
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([agentId, createdAt])
 }

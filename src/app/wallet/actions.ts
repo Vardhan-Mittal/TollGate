@@ -69,3 +69,29 @@ export async function forgetPayPal(form: FormData) {
   });
   refresh();
 }
+
+/** Owner confirms the flagged activity was legitimate: unfreeze the wallet. */
+export async function unfreezeAgent(form: FormData) {
+  const agentId = String(form.get("agentId"));
+  const eventId = form.get("eventId");
+  await prisma.agent.update({ where: { id: agentId }, data: { frozenAt: null, frozenReason: null } });
+  if (typeof eventId === "string") {
+    await prisma.riskEvent.update({
+      where: { id: eventId },
+      data: { resolution: "Owner confirmed it was legitimate and unfroze the wallet.", resolvedAt: new Date() },
+    });
+  }
+  refresh();
+}
+
+/** Owner keeps the wallet frozen (e.g. to rotate a leaked key first). */
+export async function keepFrozen(form: FormData) {
+  const eventId = form.get("eventId");
+  if (typeof eventId === "string") {
+    await prisma.riskEvent.update({
+      where: { id: eventId },
+      data: { resolution: "Owner kept the wallet frozen.", resolvedAt: new Date() },
+    });
+  }
+  refresh();
+}

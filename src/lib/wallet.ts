@@ -123,6 +123,8 @@ export async function creditCapture(opts: {
 export async function autoRecharge(agentId: string, opts: { force?: boolean } = {}) {
   const agent = await prisma.agent.findUnique({ where: { id: agentId } });
   if (!agent?.paypalVaultId || !agent.autoRechargeAmountCents || agent.autoRechargeThresholdCents == null) return null;
+  // Never reload a wallet the Spend Guardian has frozen.
+  if (agent.frozenAt) return null;
   if (!opts.force && agent.balanceCents >= agent.autoRechargeThresholdCents) return null;
 
   // Don't stack recharges: skip if one started in the last minute.

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { assessPayment, recordRisk } from "@/lib/guardian";
 import { centsToMoney } from "@/lib/money";
 import { hashAgentKey } from "./keys";
 import {
@@ -107,6 +108,27 @@ export async function payQuote(opts: { agentKey: string; quoteId: string; origin
   if (!resource) throw new TollgateError(404, "quote_not_found", "The quoted resource no longer exists.");
 
   const price = quote.priceCents;
+  const reviewUrl = `${opts.origin}/wallet`;
+
+  // Spend Guardian: a frozen wallet pays nothing until its owner reviews it,
+  // and every payment is risk-scored against the agent's own history first.
+  if (agent.frozenAt) {
+    throw new TollgateError(423, "wallet_frozen", `Spend Guardian froze this wallet: ${agent.frozenReason ?? "unusual activity"}`, {
+      review_url: reviewUrl,
+    });
+  }
+  const risk = await assessPayment({ agentId: agent.id, resourceId: quote.resourceId, priceCents: price });
+  if (risk.decision !== "ALLOW") {
+    const event = await recordRisk(agent.id, risk, { resourceId: quote.resourceId, priceCents: price });
+    if (risk.decision === "HOLD") {
+      throw new TollgateError(423, "payment_held", "Spend Guardian held this payment and froze the wallet for review.", {
+        risk_score: risk.score,
+        signals: risk.signals.map((s) => s.reason),
+        risk_event_id: event.id,
+        review_url: reviewUrl,
+      });
+    }
+  }
 
   if (agent.dailyBudgetCents != null) {
     const spent = await prisma.ledgerEntry.aggregate({

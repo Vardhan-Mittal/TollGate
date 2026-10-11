@@ -49,6 +49,7 @@ const AI = [
   ["Seller-side pricing", "Gemini appraises freshness, originality, depth and scarcity, and prices each article within the publisher's limits."],
   ["Buyer-side agent", "A research agent reads each 402 quote and decides pay or skip, with a reason, under a hard budget."],
   ["Agent-to-agent deals", "A buyer agent and the publisher's agent negotiate a bulk training license under private limits, then settle by PayPal invoice."],
+  ["Spend Guardian", "A risk model scores every agent payment against its own history and freezes the wallet when an agent goes rogue."],
   ["Finance assistant", "Answers earnings questions, cashes out and invoices, and waits for a human yes before moving money."],
 ];
 

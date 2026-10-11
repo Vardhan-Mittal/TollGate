@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { DEMO_MODE } from "@/lib/demo";
 import { formatCents } from "@/lib/money";
 import { accounts } from "@/lib/tollgate/service";
-import { disableAutoRecharge, forgetPayPal, saveAutoRecharge } from "./actions";
+import { disableAutoRecharge, forgetPayPal, keepFrozen, saveAutoRecharge, unfreezeAgent } from "./actions";
 import { CreateAgentForm } from "./create-agent-form";
 
 export default function WalletPage() {
@@ -28,7 +28,10 @@ export default function WalletPage() {
 }
 
 async function AgentList() {
-  const agents = await prisma.agent.findMany({ orderBy: { createdAt: "asc" } });
+  const agents = await prisma.agent.findMany({
+    orderBy: { createdAt: "asc" },
+    include: { riskEvents: { orderBy: { createdAt: "desc" }, take: 3 } },
+  });
   const ledger = await prisma.ledgerEntry.findMany({
     where: { account: { in: agents.map((a) => accounts.agent(a.id)) } },
     orderBy: { createdAt: "desc" },
@@ -58,6 +61,15 @@ async function AgentList() {
                 )}
               </div>
             </div>
+
+            {agent.frozenAt && <FrozenBanner agentId={agent.id} reason={agent.frozenReason} event={agent.riskEvents[0]} />}
+
+            {!agent.frozenAt && agent.riskEvents.length > 0 && (
+              <p className="mt-4 text-xs text-zinc-500">
+                🛡 Spend Guardian: last check {agent.riskEvents[0].decision.toLowerCase()} (risk {agent.riskEvents[0].score}) ·{" "}
+                {agent.riskEvents[0].resolution ?? agent.riskEvents[0].summary}
+              </p>
+            )}
 
             <div className="mt-6 grid gap-8 md:grid-cols-2">
               <div>
@@ -133,6 +145,49 @@ async function AgentList() {
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function FrozenBanner({
+  agentId,
+  reason,
+  event,
+}: {
+  agentId: string;
+  reason: string | null;
+  event?: { id: string; score: number; signals: unknown; aiNote: string | null };
+}) {
+  const signals = Array.isArray(event?.signals) ? (event.signals as { reason: string }[]) : [];
+  return (
+    <div className="mt-5 rounded-xl border-2 border-red-500/50 bg-red-50 p-4 text-sm dark:bg-red-950/40">
+      <p className="font-semibold text-red-700 dark:text-red-300">
+        🛡 Wallet frozen by Spend Guardian{event ? ` · risk ${Math.round(event.score * 100)}%` : ""}
+      </p>
+      {signals.length > 0 ? (
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-zinc-700 dark:text-zinc-300">
+          {signals.map((s, i) => (
+            <li key={i}>{s.reason}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-zinc-700 dark:text-zinc-300">{reason}</p>
+      )}
+      {event?.aiNote && <p className="mt-3 italic text-zinc-600 dark:text-zinc-400">AI note: {event.aiNote}</p>}
+      <p className="mt-3 text-zinc-600 dark:text-zinc-400">No payments or auto-recharges happen until you decide.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <form action={unfreezeAgent}>
+          <input type="hidden" name="agentId" value={agentId} />
+          {event && <input type="hidden" name="eventId" value={event.id} />}
+          <button className="rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white dark:bg-white dark:text-zinc-900">
+            It was me, unfreeze
+          </button>
+        </form>
+        <form action={keepFrozen}>
+          {event && <input type="hidden" name="eventId" value={event.id} />}
+          <button className="rounded-lg border border-red-400 px-3 py-1.5 font-medium text-red-700 dark:text-red-300">Keep frozen</button>
+        </form>
+      </div>
     </div>
   );
 }

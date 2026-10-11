@@ -1,5 +1,6 @@
 import { AgentConsole } from "@/app/agent/agent-console";
 import { PublisherFeed } from "./publisher-feed";
+import { RunawayTest } from "./runaway-test";
 
 export default function LivePage() {
   return (
@@ -18,6 +19,7 @@ export default function LivePage() {
             AI research agent
           </h2>
           <AgentConsole layout="stacked" />
+          <RunawayTest />
         </section>
 
         <section className="min-w-0 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">

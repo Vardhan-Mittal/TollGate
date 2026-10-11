@@ -65,6 +65,7 @@ Discovery document: `/.well-known/tollgate.json`
 | Live split-screen of agent and publisher (`/live`) | ✅ working |
 | Editable AI pricing grid with publisher overrides (AG Grid) | ✅ working |
 | Agent-to-agent license negotiation settled by PayPal invoice (`/deals`) | ✅ working |
+| Spend Guardian: risk model that holds unsafe agent payments and freezes the wallet | ✅ working |
 | Public demo guardrails, Render blueprint | ✅ ready |
 
 ## Run it locally
@@ -103,6 +104,7 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 | **Pricing engine** (`src/lib/ai/pricing.ts`) | Scores freshness, originality, depth and scarcity; sets read/train prices, a teaser and a plain-English reason | Prices clamped to publisher limits; scores normalised |
 | **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; wallet never below zero |
 | **Negotiating agents** (`src/lib/ai/negotiation.ts`) | A buyer agent and the publisher's agent bargain over a bulk training license, each with private limits | Buyer can never exceed its budget, publisher never goes below its floor; crossing offers close the deal; the invoice is created by code via the PayPal Agent Toolkit |
+| **Spend Guardian** (`src/lib/guardian.ts`) | Scores every agent payment against that agent's own history (repeat purchases, velocity, spend bursts, price outliers, unusual hours); the LLM writes the owner a plain-English fraud-alert note | High risk holds the payment and freezes the wallet (HTTP 423), auto-recharge stops, and only the owner can unfreeze |
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
 
 Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
@@ -143,6 +145,23 @@ npm run webhook:register -- https://your-app.example.com
 ```
 
 Put the printed id in `PAYPAL_WEBHOOK_ID`. Locally, top-ups are credited from the capture response instead.
+
+## Spend Guardian: risk control for agent wallets
+
+Giving an AI agent a wallet raises an obvious question: what if it goes wrong? A bug can make an agent buy the same
+article in a loop; a leaked API key can let someone spend from it. The Spend Guardian works like a card issuer's
+fraud check:
+
+1. Before money moves, each payment is scored against **that agent's own history**: repeat purchases of the same
+   article, purchases per minute versus its busiest minute, spend in 10 minutes versus its typical 10 minutes, price
+   versus what it usually pays, and activity at an hour it has never been active.
+2. Signals combine as a noisy-OR into a risk score. Above 40% the payment is **flagged**; above 75% it is **held** and
+   the wallet is **frozen**: no payments and no PayPal auto-recharges until the owner reviews it.
+3. The LLM writes the owner a two-sentence note (what happened, likely cause, what to do), and the wallet page shows
+   **It was me, unfreeze** / **Keep frozen**.
+
+Try it: `/live` → **Simulate runaway agent**. The simulated agent buys the same 1¢ article in a loop; the Guardian
+lets the first purchases through, flags the third and freezes the wallet on the fourth.
 
 ## Scalability
 

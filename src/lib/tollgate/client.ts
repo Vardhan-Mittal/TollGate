@@ -36,7 +36,7 @@ export class TollgateClient {
     return { kind: "error", status: res.status, message: body?.message ?? res.statusText };
   }
 
-  async pay(quoteId: string): Promise<{ ok: true; receipt: PayResponse } | { ok: false; status: number; error: string; message: string }> {
+  async pay(quoteId: string): Promise<{ ok: true; receipt: PayResponse } | { ok: false; status: number; error: string; message: string; details: Record<string, unknown> }> {
     const res = await fetch(`${this.opts.origin}/api/tollgate/pay`, {
       method: "POST",
       headers: this.headers({ Authorization: `Bearer ${this.opts.agentKey}`, "Content-Type": "application/json" }),
@@ -44,7 +44,9 @@ export class TollgateClient {
       cache: "no-store",
     });
     const body = await res.json();
-    return res.ok ? { ok: true, receipt: body } : { ok: false, status: res.status, error: body.error, message: body.message };
+    return res.ok
+      ? { ok: true, receipt: body }
+      : { ok: false, status: res.status, error: body.error, message: body.message, details: body };
   }
 
   /** Reads a paid page with its access token. */

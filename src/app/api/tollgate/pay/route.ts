@@ -1,6 +1,7 @@
 import { NextResponse, after, type NextRequest } from "next/server";
 import { z } from "zod";
 import { publicOrigin } from "@/lib/origin";
+import { explainRiskEvent } from "@/lib/guardian";
 import { errorResponse } from "@/lib/http";
 import { readBearerKey } from "@/lib/tollgate/keys";
 import { TollgateError, findAgentByKey, payQuote } from "@/lib/tollgate/service";
@@ -46,6 +47,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
+    // Write the owner-facing explanation of a held payment without delaying the response.
+    if (err instanceof TollgateError && err.code === "payment_held" && typeof err.extra.risk_event_id === "string") {
+      const eventId = err.extra.risk_event_id;
+      after(() => explainRiskEvent(eventId));
+    }
     return errorResponse(err);
   }
 }
