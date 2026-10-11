@@ -18,7 +18,8 @@ export type AgentEvent =
   | { type: "error"; message: string };
 
 type Source = { path: string; title: string; priceCents: number; paid: boolean };
-type Quote = { path: string; title: string; priceCents: number; decided: boolean };
+// token is the signed Tollgate quote; the model only ever sees a short handle like "q1".
+type Quote = { path: string; title: string; priceCents: number; decided: boolean; token: string };
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -91,11 +92,12 @@ export async function runResearchAgent(opts: {
         if (result.kind === "quote") {
           const q = result.quote;
           const priceCents = Math.round(Number(q.price.value) * 100);
-          quotes.set(q.quote_id, { path, title: q.title, priceCents, decided: false });
-          emit({ type: "quote", path, title: q.title, priceCents, teaser: q.teaser, quoteId: q.quote_id });
+          const handle = `q${quotes.size + 1}`;
+          quotes.set(handle, { path, title: q.title, priceCents, decided: false, token: q.quote_id });
+          emit({ type: "quote", path, title: q.title, priceCents, teaser: q.teaser, quoteId: handle });
           return {
             status: "payment_required",
-            quote_id: q.quote_id,
+            quote_id: handle,
             title: q.title,
             price: usd(priceCents),
             teaser: q.teaser,
@@ -125,7 +127,7 @@ export async function runResearchAgent(opts: {
           return { status: "refused", message: why };
         }
 
-        const payment = await client.pay(quote_id);
+        const payment = await client.pay(quote.token);
         if (!payment.ok) {
           emit({ type: "error", message: `Payment failed: ${payment.message}` });
           return { status: "error", message: payment.message };

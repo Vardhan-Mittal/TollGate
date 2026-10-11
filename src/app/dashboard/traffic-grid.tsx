@@ -42,9 +42,9 @@ export function TrafficGrid({ rows }: { rows: TrafficRow[] }) {
         filter: true,
         width: 115,
         cellRenderer: (p: { value: TrafficRow["outcome"] }) =>
-          p.value === "paid" ? "✅ paid" : "402 only",
+          p.value === "paid" ? "✅ paid" : "402 quoted",
       },
-      { field: "priceCents", headerName: "Agent paid", valueFormatter: money, filter: "agNumberColumnFilter", width: 115, type: "rightAligned" },
+      { field: "priceCents", headerName: "Price", headerTooltip: "Quoted price, or the amount paid", valueFormatter: money, filter: "agNumberColumnFilter", width: 115, type: "rightAligned" },
       {
         field: "publisherCents",
         headerName: "You earned",
@@ -59,7 +59,8 @@ export function TrafficGrid({ rows }: { rows: TrafficRow[] }) {
 
   const paid = rows.filter((r) => r.outcome === "paid");
   const earned = paid.reduce((s, r) => s + r.publisherCents, 0);
-  const conversion = rows.length ? Math.round((paid.length / rows.length) * 100) : 0;
+  const quoted = rows.length - paid.length;
+  const conversion = quoted ? Math.round((paid.length / quoted) * 100) : 0;
 
   return (
     <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
@@ -67,7 +68,7 @@ export function TrafficGrid({ rows }: { rows: TrafficRow[] }) {
         <div>
           <h2 className="font-semibold">AI traffic &amp; revenue</h2>
           <p className="text-sm text-zinc-500">
-            Every 402 quote and paid read · {rows.length} quotes · {conversion}% converted to payment · ${(earned / 100).toFixed(2)} earned
+            Every 402 quote and paid read · {quoted} quotes · {paid.length} paid ({conversion}%) · ${(earned / 100).toFixed(2)} earned
           </p>
         </div>
         <div className="flex gap-2">

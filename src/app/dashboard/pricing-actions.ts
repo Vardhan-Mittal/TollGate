@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PRICE_LIMITS } from "@/lib/ai/pricing";
 import { prisma } from "@/lib/db";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
+import { invalidateResourceCache } from "@/lib/tollgate/resource-cache";
 
 export type PriceRowUpdate = { readCents: number; trainCents: number; overridden: boolean };
 type Result = { ok: true; row: PriceRowUpdate } | { ok: false; error: string };
@@ -30,6 +31,7 @@ export async function setPrice(input: z.infer<typeof Input>): Promise<Result> {
     where: { id: resourceId },
     data: { [field === "read" ? "priceReadCents" : "priceTrainCents"]: cents, priceOverridden: true },
   });
+  invalidateResourceCache();
   return { ok: true, row: { readCents: updated.priceReadCents, trainCents: updated.priceTrainCents, overridden: true } };
 }
 
@@ -45,5 +47,6 @@ export async function resetToAiPrice(resourceId: string): Promise<Result> {
     where: { id: resourceId },
     data: { priceReadCents: resource.aiPriceReadCents, priceTrainCents: resource.aiPriceTrainCents, priceOverridden: false },
   });
+  invalidateResourceCache();
   return { ok: true, row: { readCents: updated.priceReadCents, trainCents: updated.priceTrainCents, overridden: false } };
 }

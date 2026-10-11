@@ -144,6 +144,10 @@ model BotVisit {
   userAgent  String
   botName    String?
   outcome    VisitOutcome
+  // For QUOTED visits: the price offered. Quotes themselves are signed tokens,
+  // stored only once paid, so this is the record of unpaid 402s.
+  priceCents Int?
+  license    License?
   createdAt  DateTime     @default(now())
 
   @@index([createdAt])

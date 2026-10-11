@@ -144,6 +144,24 @@ npm run webhook:register -- https://your-app.example.com
 
 Put the printed id in `PAYPAL_WEBHOOK_ID`. Locally, top-ups are credited from the capture response instead.
 
+## Scalability
+
+The hot path is a crawler hitting pages. Tollgate keeps that path off the database:
+
+| Concern | Design |
+|---|---|
+| Unpaid 402s | Quotes are **signed, expiring tokens** (price, license, resource inside). Issuing a quote writes nothing; a quote is stored only when an agent pays it. A tampered price fails the signature check. |
+| Double payment | Paying stores the quote under its signed id inside the payment transaction, so a second payment hits the primary key and is refused (5 simultaneous payments of one quote → one `200`, four `409`). |
+| Overdraft | The wallet debit is a conditional update (`balance >= price`), safe across any number of servers. |
+| Paid reads | Access tokens are verified in memory (JWT), with no database lookup. |
+| Price lookups | Article prices are cached per instance for 60 s and cleared when a price changes. |
+| Analytics | Bot visits are buffered and written in batches every 2 s, after the response is sent. A hard crash can drop up to one batch of analytics; payments are never buffered. |
+| Rate limits and locks | Stored in Upstash Redis when `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are set, so they hold across instances; in memory otherwise. |
+| Payment provider load | PayPal sees one top-up for thousands of micro-debits, and batched payouts, not one call per read. |
+
+Measured on one production instance on a laptop against a remote Neon database: **2,000 bot requests, 100 concurrent →
+~300 requests/s, p50 289 ms, p95 519 ms, zero quote writes**. The app is stateless, so throughput grows by adding instances.
+
 ## Limitations and how a real deployment closes them
 
 - **Bot identification is self-declared.** The gate charges clients that identify as AI (known crawler

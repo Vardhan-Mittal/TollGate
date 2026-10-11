@@ -37,11 +37,12 @@ async function Dashboard() {
   await Promise.all(pending.map((p) => refreshPayout(p.id).catch((err) => console.error("refreshPayout", err))));
 
   const account = accounts.publisher(DEMO_PUBLISHER_ID);
-  const [publisher, earned, paidReads, quotes, payouts, visits, resources, quoteLog] = await Promise.all([
+  const [publisher, earned, paidReads, quotes, payouts, visits, resources, quotedVisits, paidQuotes] = await Promise.all([
     prisma.publisher.findUniqueOrThrow({ where: { id: DEMO_PUBLISHER_ID } }),
     prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { account, kind: "EARNING" } }),
     prisma.accessGrant.count({ where: { resource: { publisherId: DEMO_PUBLISHER_ID } } }),
-    prisma.quote.count({ where: { resource: { publisherId: DEMO_PUBLISHER_ID } } }),
+    // Quotes are signed tokens; unpaid 402s live in the visit log.
+    prisma.botVisit.count({ where: { outcome: "QUOTED", resource: { publisherId: DEMO_PUBLISHER_ID } } }),
     prisma.payout.findMany({ where: { publisherId: DEMO_PUBLISHER_ID }, orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.botVisit.findMany({ orderBy: { createdAt: "desc" }, take: 12, include: { resource: true } }),
     prisma.resource.findMany({
@@ -49,27 +50,40 @@ async function Dashboard() {
       orderBy: { publishedAt: "desc" },
       include: { _count: { select: { grants: true } } },
     }),
-    prisma.quote.findMany({
-      where: { resource: { publisherId: DEMO_PUBLISHER_ID } },
+    prisma.botVisit.findMany({
+      where: { outcome: "QUOTED", resource: { publisherId: DEMO_PUBLISHER_ID } },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: 400,
+      include: { resource: true },
+    }),
+    prisma.quote.findMany({
+      where: { status: "PAID", resource: { publisherId: DEMO_PUBLISHER_ID } },
+      orderBy: { paidAt: "desc" },
+      take: 400,
       include: { resource: true, agent: true },
     }),
   ]);
 
-  const trafficRows: TrafficRow[] = quoteLog.map((q) => {
-    const paid = q.status === "PAID";
-    const net = q.priceCents - Math.floor((q.priceCents * PLATFORM_FEE_BPS) / 10_000);
-    return {
+  const trafficRows: TrafficRow[] = [
+    ...quotedVisits.map((v) => ({
+      time: v.createdAt.toISOString(),
+      agent: v.botName ?? "Unknown bot",
+      article: v.resource?.title ?? v.path,
+      license: (v.license === "TRAIN" ? "train" : "read") as TrafficRow["license"],
+      outcome: "quoted" as const,
+      priceCents: v.priceCents ?? 0,
+      publisherCents: 0,
+    })),
+    ...paidQuotes.map((q) => ({
       time: (q.paidAt ?? q.createdAt).toISOString(),
       agent: q.agent?.name ?? q.botName ?? "Unknown bot",
       article: q.resource.title,
-      license: q.license === "TRAIN" ? "train" : "read",
-      outcome: paid ? "paid" : "quoted",
-      priceCents: paid ? q.priceCents : 0,
-      publisherCents: paid ? net : 0,
-    };
-  });
+      license: (q.license === "TRAIN" ? "train" : "read") as TrafficRow["license"],
+      outcome: "paid" as const,
+      priceCents: q.priceCents,
+      publisherCents: q.priceCents - Math.floor((q.priceCents * PLATFORM_FEE_BPS) / 10_000),
+    })),
+  ];
 
   const priceRows: PriceRow[] = resources.map((r) => ({
     id: r.id,

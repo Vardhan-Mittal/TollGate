@@ -171,7 +171,7 @@ Tollgate-Price: 0.24 USD
 async function LiveStats() {
   const [paidReads, quotes, paidOut, agents] = await Promise.all([
     prisma.accessGrant.count(),
-    prisma.quote.count(),
+    prisma.botVisit.count({ where: { outcome: "QUOTED" } }),
     prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { kind: "EARNING" } }),
     prisma.agent.count(),
   ]);

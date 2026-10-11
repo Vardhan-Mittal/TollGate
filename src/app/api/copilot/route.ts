@@ -13,7 +13,7 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "copilot", 20, 10 * 60_000);
+  const limited = await rateLimit(req, "copilot", 20, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

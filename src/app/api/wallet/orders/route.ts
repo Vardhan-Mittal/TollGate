@@ -14,7 +14,7 @@ const Body = z.object({
 // Creates a PayPal order for a wallet top-up. The browser then opens the
 // PayPal checkout with the returned order id.
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "topup", 10, 10 * 60_000);
+  const limited = await rateLimit(req, "topup", 10, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

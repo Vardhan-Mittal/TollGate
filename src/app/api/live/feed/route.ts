@@ -36,8 +36,9 @@ export async function GET(req: NextRequest) {
       where: { account: accounts.publisher(DEMO_PUBLISHER_ID), kind: "EARNING", createdAt: { gte: dayStart } },
     }),
     prisma.accessGrant.count({ where: { createdAt: { gte: dayStart }, resource: { publisherId: DEMO_PUBLISHER_ID } } }),
-    prisma.quote.findMany({
-      where: { createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID } },
+    // Unpaid 402s are recorded in the visit log; quotes are signed tokens.
+    prisma.botVisit.findMany({
+      where: { outcome: "QUOTED", createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID } },
       include: { resource: true },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -73,8 +74,8 @@ export async function GET(req: NextRequest) {
       at: q.createdAt.toISOString(),
       kind: "quote" as const,
       title: `402 quote sent to ${q.botName ?? "an AI agent"}`,
-      detail: q.resource.title,
-      amountCents: q.priceCents,
+      detail: q.resource?.title ?? q.path,
+      amountCents: q.priceCents ?? 0,
     })),
     ...grants.map((g) => ({
       id: `g-${g.id}`,

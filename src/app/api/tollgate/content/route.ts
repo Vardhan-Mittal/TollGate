@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   if (!resource) return NextResponse.json({ error: "not_found", message: "No such resource." }, { status: 404 });
 
   const bot = detectBot(req.headers);
-  await recordVisit({
+  recordVisit({
     path,
     userAgent: req.headers.get("user-agent") ?? "",
     botName: bot.isBot ? bot.botName : undefined,

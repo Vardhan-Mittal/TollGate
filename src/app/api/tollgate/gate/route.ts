@@ -39,11 +39,17 @@ export async function GET(req: NextRequest) {
 
   if (quote.kind === "free") {
     const resource = await prisma.resource.findUniqueOrThrow({ where: { path } });
-    await recordVisit({ ...visit, resourceId: resource.id, outcome: "FREE_ACCESS" });
+    recordVisit({ ...visit, resourceId: resource.id, outcome: "FREE_ACCESS" });
     return NextResponse.json({ resource: path, title: resource.title, license: "free", body: resource.body });
   }
 
-  await recordVisit({ ...visit, resourceId: quote.resourceId, outcome: "QUOTED" });
+  recordVisit({
+    ...visit,
+    resourceId: quote.resourceId,
+    outcome: "QUOTED",
+    priceCents: quote.priceCents,
+    license: license === "train" ? "TRAIN" : "READ",
+  });
 
   const { body } = quote;
   return NextResponse.json(body, {

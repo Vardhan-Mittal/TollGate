@@ -9,7 +9,7 @@ const Body = z.object({ email: z.string() });
 
 // Cashes out the publisher's whole balance to a PayPal account via Payouts.
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "payout", 5, 10 * 60_000);
+  const limited = await rateLimit(req, "payout", 5, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));

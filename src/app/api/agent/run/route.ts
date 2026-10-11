@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { publicOrigin } from "@/lib/origin";
-import { rateLimit } from "@/lib/rate-limit";
+import { acquireLock, rateLimit, releaseLock } from "@/lib/rate-limit";
 import { runResearchAgent, type AgentEvent } from "@/lib/ai/research-agent";
 
 const Body = z.object({
@@ -9,12 +9,10 @@ const Body = z.object({
   budgetCents: z.number().int().min(5).max(200),
 });
 
-// One run at a time per server keeps the public demo from being flooded.
-let running = false;
 
 // Streams the research agent's steps as newline-delimited JSON events.
 export async function POST(req: NextRequest) {
-  const limited = rateLimit(req, "agent", 6, 10 * 60_000);
+  const limited = await rateLimit(req, "agent", 6, 10 * 60_000);
   if (limited) return limited;
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -23,9 +21,11 @@ export async function POST(req: NextRequest) {
   }
   const agentKey = process.env.DEMO_AGENT_KEY;
   if (!agentKey) return NextResponse.json({ error: "not_configured", message: "DEMO_AGENT_KEY is not set." }, { status: 500 });
-  if (running) return NextResponse.json({ error: "busy", message: "Another agent run is in progress. Try again in a moment." }, { status: 429 });
+  // One run at a time across all servers keeps the public demo (and the AI quota) from being flooded.
+  if (!(await acquireLock("agent-run", 5 * 60_000))) {
+    return NextResponse.json({ error: "busy", message: "Another agent run is in progress. Try again in a moment." }, { status: 429 });
+  }
 
-  running = true;
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         console.error("agent run failed", err);
         emit({ type: "error", message: err instanceof Error ? err.message : "Agent run failed." });
       } finally {
-        running = false;
+        await releaseLock("agent-run");
         controller.close();
       }
     },

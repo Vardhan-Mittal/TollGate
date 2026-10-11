@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { invalidateResourceCache } from "@/lib/tollgate/resource-cache";
 import { PRICING_MODELS, withModelFallback } from "./models";
 
 // Publisher guardrails. The AI proposes, code enforces: prices are always
@@ -97,5 +98,6 @@ export async function priceResource(resourceId: string) {
       aiReasoning: `${result.reasoning} (freshness ${freshness}/10, originality ${originality}/10, depth ${depth}/10, scarcity ${scarcity}/10 · ${result.model})`,
     },
   });
+  invalidateResourceCache();
   return result;
 }

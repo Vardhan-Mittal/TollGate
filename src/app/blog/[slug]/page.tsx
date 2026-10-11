@@ -33,7 +33,7 @@ async function Article({ params }: { params: Promise<{ slug: string }> }) {
   const token = readTollgateToken(requestHeaders);
   if (token && (await verifyAccessToken(token, path)).ok) {
     const bot = detectBot(requestHeaders);
-    await recordVisit({
+    recordVisit({
       path,
       userAgent: requestHeaders.get("user-agent") ?? "",
       botName: bot.isBot ? bot.botName : undefined,
