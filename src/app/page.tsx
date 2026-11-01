@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { LiveBoard, LiveBoardSkeleton } from "@/components/live-board/live-board";
 import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { PaymentFlow } from "@/components/payment-flow";
 import { prisma } from "@/lib/db";
@@ -123,6 +124,23 @@ export default function Home() {
       <Suspense fallback={<div className="mt-12 h-24" />}>
         <LiveStats />
       </Suspense>
+
+      <section className="mt-20 overflow-x-clip pb-2">
+        <Reveal>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Every AI visit, <span className="font-serif text-[1.08em] font-normal italic text-emerald-600">on the record.</span>
+          </h2>
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <p className="text-zinc-600 dark:text-zinc-400">Real traffic from the demo publisher. Filter it.</p>
+            <Link href="/dashboard" className="group text-sm font-medium text-emerald-600 hover:text-emerald-700">
+              Open the publisher dashboard <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          </div>
+        </Reveal>
+        <Suspense fallback={<LiveBoardSkeleton />}>
+          <LiveBoard />
+        </Suspense>
+      </section>
 
       <section className="mt-16">
         <Reveal>
