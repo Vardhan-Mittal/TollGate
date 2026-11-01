@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { PaymentFlow } from "@/components/payment-flow";
 import { prisma } from "@/lib/db";
 
 const IMPACT = [
@@ -64,30 +66,50 @@ const DEMOS = [
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-14">
-      <p className="text-sm font-medium uppercase tracking-widest text-emerald-600">Tollgate</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">AI agents pay the web they read.</h1>
-      <p className="mt-6 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-        AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
-        402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
-        on PayPal.
-      </p>
+    <main className="relative mx-auto w-full max-w-5xl overflow-x-clip px-4 py-14">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 left-1/3 -z-10 h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl motion-safe:animate-[drift_14s_ease-in-out_infinite] dark:bg-emerald-500/15"
+      />
+      <Reveal>
+        <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-emerald-600">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
+          Tollgate
+        </p>
+      </Reveal>
+      <Reveal delay={0.08}>
+        <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+          AI agents pay <span className="font-serif text-[1.08em] font-normal italic text-emerald-600">the web they read.</span>
+        </h1>
+      </Reveal>
+      <Reveal delay={0.16}>
+        <p className="mt-6 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
+          AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
+          402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
+          on PayPal.
+        </p>
+      </Reveal>
 
-      <div className="mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+      <PaymentFlow />
+
+      <Stagger className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
         {IMPACT.map((item) => (
-          <a
-            key={item.stat}
-            href={item.href}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-xl border border-zinc-200 p-4 transition hover:border-emerald-500 dark:border-zinc-800"
-          >
-            <p className="text-3xl font-bold tabular-nums">{item.stat}</p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{item.text}</p>
-            <p className="mt-2 text-xs text-zinc-500">Source: {item.source} ↗</p>
-          </a>
+          <StaggerItem key={item.stat}>
+            <Lift>
+              <a
+                href={item.href}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-xl border border-zinc-200 p-4 transition-colors hover:border-emerald-500 dark:border-zinc-800"
+              >
+                <p className="text-3xl font-bold tabular-nums">{item.stat}</p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{item.text}</p>
+                <p className="mt-2 text-xs text-zinc-500">Source: {item.source} ↗</p>
+              </a>
+            </Lift>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/live" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
@@ -103,16 +125,19 @@ export default function Home() {
       </Suspense>
 
       <section className="mt-16">
-        <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
-        <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Reveal>
+          <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
+        </Reveal>
+        <Stagger as="ol" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => (
-            <li key={step.title} className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+            <StaggerItem as="li" key={step.title} className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
               <p className="text-sm text-zinc-500">Step {i + 1}</p>
               <p className="mt-1 text-lg font-semibold">{step.title}</p>
               <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{step.text}</p>
-            </li>
+            </StaggerItem>
           ))}
-        </ol>
+        </Stagger>
+        <Reveal>
         <pre className="mt-6 overflow-x-auto rounded-xl bg-zinc-950 p-5 text-sm leading-6 text-zinc-100">
 {`$ curl -i -A "GPTBot" https://<this-site>/blog/q3-2026-battery-cell-price-survey
 HTTP/1.1 402 Payment Required
@@ -120,10 +145,11 @@ Tollgate-Price: 0.24 USD
 { "quote_id": "…", "license": "read", "teaser": "Proprietary pricing data from 40 suppliers…",
   "pay_url": "https://<this-site>/api/tollgate/pay" }`}
         </pre>
+        </Reveal>
       </section>
 
       <section className="mt-16 grid gap-8 lg:grid-cols-2">
-        <div>
+        <Reveal>
           <h2 className="text-2xl font-semibold tracking-tight">Built on PayPal</h2>
           <p className="mt-2 text-sm text-zinc-500">
             Paying a few cents per page by card would cost more in fees than the payment itself. Tollgate pools agent spending in
@@ -137,8 +163,8 @@ Tollgate-Price: 0.24 USD
               </li>
             ))}
           </ul>
-        </div>
-        <div>
+        </Reveal>
+        <Reveal delay={0.1}>
           <h2 className="text-2xl font-semibold tracking-tight">AI on both sides</h2>
           <ul className="mt-4 space-y-4">
             {AI.map(([name, text]) => (
@@ -148,19 +174,27 @@ Tollgate-Price: 0.24 USD
               </li>
             ))}
           </ul>
-        </div>
+        </Reveal>
       </section>
 
       <section className="mt-16">
-        <h2 className="text-2xl font-semibold tracking-tight">Try the demo</h2>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Reveal>
+          <h2 className="text-2xl font-semibold tracking-tight">Try the demo</h2>
+        </Reveal>
+        <Stagger className="mt-6 grid gap-4 sm:grid-cols-2">
           {DEMOS.map((d) => (
-            <Link key={d.href} href={d.href} className="rounded-xl border border-zinc-200 p-5 transition hover:border-emerald-500 dark:border-zinc-800">
-              <p className="font-semibold">{d.title} →</p>
-              <p className="mt-1 text-sm text-zinc-500">{d.text}</p>
-            </Link>
+            <StaggerItem key={d.href}>
+              <Lift>
+                <Link href={d.href} className="group block rounded-xl border border-zinc-200 p-5 transition-colors hover:border-emerald-500 dark:border-zinc-800">
+                  <p className="font-semibold">
+                    {d.title} <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">{d.text}</p>
+                </Link>
+              </Lift>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
         <p className="mt-6 text-xs text-zinc-500">
           Runs entirely on the PayPal sandbox: no real money moves. The demo publisher and its articles are fictional.
         </p>
@@ -178,20 +212,22 @@ async function LiveStats() {
   ]);
 
   const stats = [
-    { label: "paid AI reads", value: paidReads.toLocaleString("en-US") },
-    { label: "402 quotes issued", value: quotes.toLocaleString("en-US") },
-    { label: "earned by publishers", value: `$${((paidOut._sum.amountCents ?? 0) / 100).toFixed(2)}` },
-    { label: "agents with wallets", value: agents.toLocaleString("en-US") },
+    { label: "paid AI reads", value: paidReads },
+    { label: "402 quotes issued", value: quotes },
+    { label: "earned by publishers", value: (paidOut._sum.amountCents ?? 0) / 100, prefix: "$", decimals: 2 },
+    { label: "agents with wallets", value: agents },
   ];
 
   return (
-    <dl className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <Stagger as="dl" className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
       {stats.map((s) => (
-        <div key={s.label} className="rounded-xl bg-zinc-100 p-4 dark:bg-zinc-900">
+        <StaggerItem key={s.label} className="rounded-xl bg-zinc-100 p-4 dark:bg-zinc-900">
           <dt className="text-xs uppercase tracking-wide text-zinc-500">{s.label}</dt>
-          <dd className="mt-1 text-2xl font-bold tabular-nums">{s.value}</dd>
-        </div>
+          <dd className="mt-1 text-2xl font-bold tabular-nums">
+            <CountUp value={s.value} prefix={s.prefix} decimals={s.decimals} />
+          </dd>
+        </StaggerItem>
       ))}
-    </dl>
+    </Stagger>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { CountUp } from "@/components/motion";
 import type { LiveEvent, LiveFeed } from "@/app/api/live/feed/route";
 
 const POLL_MS = 1500;
@@ -62,21 +64,32 @@ export function PublisherFeed() {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Earned today" value={feed ? usd(feed.publisher.earnedTodayCents) : "—"} highlight={flash} />
-        <Stat label="Paid reads today" value={feed ? String(feed.publisher.paidReadsToday) : "—"} />
-        <Stat label="Ready to cash out" value={feed ? usd(feed.publisher.balanceCents) : "—"} />
+        <Stat label="Earned today" highlight={flash}>
+          {feed ? <CountUp value={feed.publisher.earnedTodayCents / 100} prefix="$" decimals={2} /> : "—"}
+        </Stat>
+        <Stat label="Paid reads today">{feed ? <CountUp value={feed.publisher.paidReadsToday} /> : "—"}</Stat>
+        <Stat label="Ready to cash out">{feed ? <CountUp value={feed.publisher.balanceCents / 100} prefix="$" decimals={2} /> : "—"}</Stat>
       </div>
 
       <div className="space-y-2">
         {events.length === 0 && (
-          <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="flex items-center gap-2 rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
             Waiting for AI agents… Run the agent on the left and watch quotes and payments land here.
           </p>
         )}
+        <AnimatePresence initial={false}>
         {events.map((e) => {
           const style = STYLE[e.kind];
           return (
-            <div key={e.id} className="animate-[fadein_0.5s_ease-out] flex items-start gap-3 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+            <motion.div
+              key={e.id}
+              layout
+              initial={{ opacity: 0, y: -12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-start gap-3 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800"
+            >
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${style.tone}`}>{style.badge}</span>
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{e.title}</p>
@@ -86,23 +99,25 @@ export function PublisherFeed() {
                 {style.sign}
                 {short(e.amountCents)}
               </span>
-            </div>
+            </motion.div>
           );
         })}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+function Stat({ label, highlight = false, children }: { label: string; highlight?: boolean; children: React.ReactNode }) {
   return (
-    <div
+    <motion.div
+      animate={{ scale: highlight ? 1.04 : 1 }}
       className={`rounded-xl p-4 transition-colors duration-700 ${
         highlight ? "bg-emerald-200 dark:bg-emerald-800/60" : "bg-zinc-100 dark:bg-zinc-900"
       }`}
     >
       <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-    </div>
+      <p className="mt-1 text-2xl font-bold tabular-nums">{children}</p>
+    </motion.div>
   );
 }

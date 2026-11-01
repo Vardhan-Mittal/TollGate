@@ -1,7 +1,9 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CountUp } from "@/components/motion";
 import type { NegotiationEvent } from "@/lib/ai/negotiation";
 
 const BUDGETS = [150, 200, 300, 500];
@@ -88,13 +90,14 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
                 key={b}
                 type="button"
                 onClick={() => setBudgetCents(b)}
-                className={`rounded-lg border px-3 py-1 text-sm tabular-nums ${
-                  budgetCents === b
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                    : "border-zinc-300 dark:border-zinc-700"
+                className={`relative rounded-lg border border-zinc-300 px-3 py-1 text-sm tabular-nums transition-colors dark:border-zinc-700 ${
+                  budgetCents === b ? "text-white dark:text-zinc-900" : ""
                 }`}
               >
-                {usd(b)}
+                {budgetCents === b && (
+                  <motion.span layoutId="deal-budget" className="absolute -inset-px rounded-lg bg-zinc-900 dark:bg-white" />
+                )}
+                <span className="relative">{usd(b)}</span>
               </button>
             ))}
           </div>
@@ -124,7 +127,10 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
           const buyer = t.side === "buyer";
           return (
             <div key={i} className={`flex ${buyer ? "justify-start" : "justify-end"}`}>
-              <div
+              <motion.div
+                initial={{ opacity: 0, x: buyer ? -24 : 24, scale: 0.96 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                style={{ originX: buyer ? 0 : 1 }}
                 className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                   buyer ? "rounded-bl-sm bg-zinc-100 dark:bg-zinc-900" : "rounded-br-sm bg-emerald-50 dark:bg-emerald-950/50"
                 }`}
@@ -145,7 +151,7 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
                 </div>
                 <p>{t.message}</p>
                 {t.guard && <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">⚖ Code guard: {t.guard}</p>}
-              </div>
+              </motion.div>
             </div>
           );
         })}
@@ -153,10 +159,14 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
       </div>
 
       {agreed && (
-        <section className="rounded-2xl border-2 border-emerald-500/40 p-5">
+        <motion.section
+          initial={{ opacity: 0, y: 16, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="rounded-2xl border-2 border-emerald-500/40 p-5"
+        >
           <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">Deal agreed</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
-            {usd(agreed.priceCents)}{" "}
+            <CountUp value={agreed.priceCents / 100} prefix="$" decimals={2} />{" "}
             <span className="text-base font-normal text-zinc-500">
               ({Math.round((agreed.priceCents / agreed.listPriceCents) * 100)}% of list {usd(agreed.listPriceCents)})
             </span>
@@ -168,7 +178,14 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
                 ({invoice.email}) using the PayPal Agent Toolkit.
               </p>
               {paid ? (
-                <p className="font-semibold text-emerald-600">✅ Paid through PayPal. The training license is active and the publisher has been credited.</p>
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  className="font-semibold text-emerald-600"
+                >
+                  ✅ Paid through PayPal. The training license is active and the publisher has been credited.
+                </motion.p>
               ) : (
                 <>
                   {invoice.url && (
@@ -183,7 +200,7 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
           ) : (
             <p className="mt-3 animate-pulse text-sm text-zinc-500">Publisher&apos;s agent is issuing a PayPal invoice…</p>
           )}
-        </section>
+        </motion.section>
       )}
 
       {noDeal && (

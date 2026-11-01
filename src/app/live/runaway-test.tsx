@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { SimulationEvent } from "@/app/api/guardian/simulate/route";
@@ -76,17 +77,23 @@ export function RunawayTest() {
       {attempts.length > 0 && (
         <ol className="mt-3 space-y-1.5 text-sm">
           {attempts.map((a) => (
-            <li key={a.n} className="flex items-center gap-2">
+            <motion.li key={a.n} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
               <span className="w-6 text-right tabular-nums text-zinc-500">#{a.n}</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${OUTCOME[a.outcome].tone}`}>{OUTCOME[a.outcome].label}</span>
               <span className="text-zinc-600 dark:text-zinc-400">{a.detail}</span>
-            </li>
+            </motion.li>
           ))}
         </ol>
       )}
 
       {held && (
-        <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm dark:bg-red-950/40">
+        // A short shake, like a card terminal declining a payment.
+        <motion.div
+          initial={{ opacity: 0, x: 0 }}
+          animate={{ opacity: 1, x: [0, -8, 8, -6, 6, -3, 0] }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mt-3 rounded-lg bg-red-50 p-3 text-sm dark:bg-red-950/40"
+        >
           <p className="font-semibold text-red-700 dark:text-red-300">Wallet frozen · risk {Math.round(held.score * 100)}%</p>
           <ul className="mt-1 list-disc pl-5 text-zinc-700 dark:text-zinc-300">
             {held.signals.map((s, i) => (
@@ -110,7 +117,7 @@ export function RunawayTest() {
               It was a test, unfreeze
             </button>
           </form>
-        </div>
+        </motion.div>
       )}
 
       {note && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{note}</p>}

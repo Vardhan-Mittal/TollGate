@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { AgentEvent } from "@/lib/ai/research-agent";
@@ -95,13 +96,15 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
                 key={b}
                 type="button"
                 onClick={() => setBudgetCents(b)}
-                className={`rounded-lg border px-3 py-1.5 tabular-nums ${
-                  budgetCents === b
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                    : "border-zinc-300 dark:border-zinc-700"
+                className={`relative rounded-lg border border-zinc-300 px-3 py-1.5 tabular-nums transition-colors dark:border-zinc-700 ${
+                  budgetCents === b ? "text-white dark:text-zinc-900" : ""
                 }`}
               >
-                {cents(b)}
+                {/* The selected budget's background slides between buttons. */}
+                {budgetCents === b && (
+                  <motion.span layoutId="agent-budget" className="absolute -inset-px rounded-lg bg-zinc-900 dark:bg-white" />
+                )}
+                <span className="relative">{cents(b)}</span>
               </button>
             ))}
           </div>
@@ -116,7 +119,10 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
           <div className="flex justify-between border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
             <span className="text-zinc-500">Spent</span>
             <span className="font-semibold tabular-nums">
-              {cents(spent)} of {cents(budgetCents)}
+              <motion.span key={spent} initial={{ scale: 1.3, opacity: 0.4 }} animate={{ scale: 1, opacity: 1 }} className="inline-block">
+                {cents(spent)}
+              </motion.span>{" "}
+              of {cents(budgetCents)}
             </span>
           </div>
         )}
@@ -129,12 +135,45 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
           </p>
         )}
         {timeline.map((e, i) => (
-          <EventRow key={i} event={e} />
+          <motion.div key={i} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
+            <EventRow event={e} />
+          </motion.div>
         ))}
-        {running && <p className="animate-pulse text-sm text-zinc-500">Thinking…</p>}
-        {answer && <AnswerCard answer={answer} />}
+        <AnimatePresence>
+          {running && (
+            <motion.p
+              key="thinking"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 text-sm text-zinc-500"
+            >
+              <ThinkingDots /> Thinking
+            </motion.p>
+          )}
+        </AnimatePresence>
+        {answer && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+            <AnswerCard answer={answer} />
+          </motion.div>
+        )}
       </div>
     </div>
+  );
+}
+
+function ThinkingDots() {
+  return (
+    <span className="flex gap-1">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+        />
+      ))}
+    </span>
   );
 }
 
@@ -148,7 +187,14 @@ function Row({ tone, label, children }: { tone: "zinc" | "amber" | "emerald" | "
   };
   return (
     <div className="flex gap-3 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
-      <span className={`h-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tones[tone]}`}>{label}</span>
+      <motion.span
+        initial={{ scale: 0.6 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", stiffness: 500, damping: 18 }}
+        className={`h-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tones[tone]}`}
+      >
+        {label}
+      </motion.span>
       <div className="min-w-0">{children}</div>
     </div>
   );
