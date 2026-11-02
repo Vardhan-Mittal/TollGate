@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Reveal } from "@/components/motion";
+import { PaywallLab } from "./paywall-lab";
 
 const STEPS: { title: string; text: string; Illustration: () => ReactNode }[] = [
   {
@@ -31,7 +32,7 @@ const pad = (i: number) => String(i + 1).padStart(2, "0");
 
 /**
  * "How it works": four step headings that light up as the section scrolls past, or on
- * click / arrow keys, beside a card explaining the active step. Ends with the curl example.
+ * click / arrow keys, beside a card explaining the active step. Ends with the paywall lab (the 402 exchange and the gated article).
  */
 export function HowItWorks({ className = "" }: { className?: string }) {
   const [active, setActive] = useState(0);
@@ -140,13 +141,7 @@ export function HowItWorks({ className = "" }: { className?: string }) {
       </div>
 
       <Reveal>
-        <pre className="mt-8 overflow-x-auto rounded-xl bg-zinc-950 p-5 text-sm leading-6 text-zinc-100">
-          {`$ curl -i -A "GPTBot" https://<this-site>/blog/q3-2026-battery-cell-price-survey
-HTTP/1.1 402 Payment Required
-Tollgate-Price: 0.24 USD
-{ "quote_id": "…", "license": "read", "teaser": "Proprietary pricing data from 40 suppliers…",
-  "pay_url": "https://<this-site>/api/tollgate/pay" }`}
-        </pre>
+        <PaywallLab className="mt-8" />
       </Reveal>
     </section>
   );
