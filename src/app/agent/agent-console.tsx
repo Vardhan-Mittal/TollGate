@@ -219,6 +219,16 @@ function EventRow({ event: e }: { event: AgentEvent }) {
       );
     case "free":
       return <Row tone="zinc" label="Free">{e.title}</Row>;
+    case "owned":
+      return (
+        <Row tone="sky" label="Already licensed">
+          <p className="font-medium">{e.title}</p>
+          <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+            Bought {e.minutesAgo < 1 ? "moments" : `${e.minutesAgo} min`} ago for {cents(e.priceCents)}. The licence still holds, so the agent
+            reads it again at no charge instead of paying twice.
+          </p>
+        </Row>
+      );
     case "paid":
       return (
         <Row tone="emerald" label={`Paid ${cents(e.priceCents)}`}>
@@ -286,7 +296,7 @@ function AnswerCard({ answer }: { answer: Extract<AgentEvent, { type: "answer" }
           {answer.sources.map((s) => (
             <li key={s.path} className="flex justify-between gap-3">
               <a href={s.path} className="truncate hover:underline">{s.title}</a>
-              <span className="shrink-0 tabular-nums text-zinc-500">{s.paid ? cents(s.priceCents) : "free"}</span>
+              <span className="shrink-0 tabular-nums text-zinc-500">{s.paid ? cents(s.priceCents) : s.licensed ? "licensed" : "free"}</span>
             </li>
           ))}
         </ul>

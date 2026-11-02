@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { prepareSimulationAgent } from "@/lib/guardian-simulation";
 import { publicOrigin } from "@/lib/origin";
 import { acquireLock, rateLimit, releaseLock } from "@/lib/rate-limit";
 import { TollgateClient } from "@/lib/tollgate/client";
-import { findAgentByKey } from "@/lib/tollgate/service";
 
 export type SimulationEvent =
   | { type: "start"; agentId: string; agent: string; article: string }
@@ -15,16 +15,22 @@ const LOOP_PATH = "/blog/ten-tips-ev-battery-life";
 const MAX_ATTEMPTS = 12;
 
 // Simulates a runaway agent against the real payment API so the Spend
-// Guardian can be seen catching it. Costs a few cents of sandbox balance.
+// Guardian can be seen catching it. It pays from its own test wallet, so the
+// freeze never blocks the demo agent the other demos use.
 export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, "guardian-sim", 3, 10 * 60_000);
   if (limited) return limited;
-  const agentKey = process.env.DEMO_AGENT_KEY;
-  if (!agentKey) return NextResponse.json({ error: "not_configured", message: "DEMO_AGENT_KEY is not set." }, { status: 500 });
-  const agent = await findAgentByKey(agentKey);
   if (!(await acquireLock("guardian-sim", 2 * 60_000))) {
     return NextResponse.json({ error: "busy", message: "A simulation is already running." }, { status: 429 });
   }
+  let agent: Awaited<ReturnType<typeof prepareSimulationAgent>>;
+  try {
+    agent = await prepareSimulationAgent();
+  } catch (err) {
+    await releaseLock("guardian-sim");
+    throw err;
+  }
+  const agentKey = agent.key;
 
   const client = new TollgateClient({ origin: publicOrigin(req), agentKey, userAgent: "RunawayAgent/0.1 (stuck in a loop)" });
   const encoder = new TextEncoder();
@@ -33,7 +39,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const emit = (e: SimulationEvent) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
       try {
-        emit({ type: "start", agentId: agent.id, agent: agent.name, article: LOOP_PATH });
+        emit({ type: "start", agentId: agent.agentId, agent: agent.name, article: LOOP_PATH });
         for (let n = 1; n <= MAX_ATTEMPTS; n++) {
           const page = await client.open(LOOP_PATH);
           if (page.kind !== "quote") {
@@ -49,7 +55,7 @@ export async function POST(req: NextRequest) {
           if (payment.error === "payment_held" || payment.error === "wallet_frozen") {
             const body = payment.details as { risk_event_id?: string; risk_score?: number; signals?: string[] };
             emit({ type: "attempt", n, outcome: payment.error === "payment_held" ? "held" : "frozen", priceCents, detail: payment.message });
-            emit({ type: "held", agentId: agent.id, eventId: body.risk_event_id ?? null, score: body.risk_score ?? 1, signals: body.signals ?? [] });
+            emit({ type: "held", agentId: agent.agentId, eventId: body.risk_event_id ?? null, score: body.risk_score ?? 1, signals: body.signals ?? [] });
             break;
           }
           emit({ type: "attempt", n, outcome: "error", priceCents, detail: payment.message });

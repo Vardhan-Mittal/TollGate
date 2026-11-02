@@ -102,7 +102,7 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 | Feature | What the AI does | Guardrails in code |
 |---|---|---|
 | **Pricing engine** (`src/lib/ai/pricing.ts`) | Scores freshness, originality, depth and scarcity; sets read/train prices, a teaser and a plain-English reason | Prices clamped to publisher limits; scores normalised |
-| **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; wallet never below zero |
+| **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; a page it bought in the last 10 minutes is re-read on the same licence, never bought twice; wallet never below zero |
 | **Negotiating agents** (`src/lib/ai/negotiation.ts`) | A buyer agent and the publisher's agent bargain over a bulk training license, each with private limits | Buyer can never exceed its budget, publisher never goes below its floor; crossing offers close the deal; the invoice is created by code via the PayPal Agent Toolkit |
 | **Spend Guardian** (`src/lib/guardian.ts`) | Scores every agent payment against that agent's own history (repeat purchases, velocity, spend bursts, price outliers, unusual hours); the LLM writes the owner a plain-English fraud-alert note | High risk holds the payment and freezes the wallet (HTTP 423), auto-recharge stops, and only the owner can unfreeze |
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
@@ -161,7 +161,9 @@ fraud check:
    **It was me, unfreeze** / **Keep frozen**.
 
 Try it: `/live` → **Simulate runaway agent**. The simulated agent buys the same 1¢ article in a loop; the Guardian
-lets the first purchases through, flags the third and freezes the wallet on the fourth.
+lets the first purchases through, flags the third and freezes the wallet on the fourth. The simulation pays from its own
+test wallet ("Runaway Agent (simulation)", reset with a fresh key and a few cents of test credit on every run), so its
+freeze never blocks the demo agent the other demos use.
 
 ## Scalability
 

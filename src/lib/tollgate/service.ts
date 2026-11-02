@@ -88,6 +88,29 @@ export async function findAgentByKey(key: string) {
   return agent;
 }
 
+/**
+ * A licence an agent bought stays good for the access-token lifetime: within it,
+ * re-opening the page issues a new token for the same grant instead of a second sale.
+ * Returns null when the agent holds no such licence.
+ */
+export async function reissueAccess(opts: { agentKey: string; path: string; license: LicenseType }) {
+  const agent = await findAgentByKey(opts.agentKey);
+  const resource = await getResourceByPath(opts.path);
+  if (!resource) return null;
+  const grant = await prisma.accessGrant.findFirst({
+    where: {
+      agentId: agent.id,
+      resourceId: resource.id,
+      license: toDbLicense(opts.license),
+      createdAt: { gte: new Date(Date.now() - ACCESS_TOKEN_TTL_SECONDS * 1000) },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!grant) return null;
+  const accessToken = await signAccessToken({ resource: opts.path, license: opts.license, grantId: grant.id, agentId: agent.id });
+  return { accessToken, boughtAt: grant.createdAt, priceCents: grant.priceCents };
+}
+
 function startOfUtcDay() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));

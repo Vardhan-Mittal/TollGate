@@ -1,6 +1,7 @@
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { TollgateClient } from "@/lib/tollgate/client";
+import { reissueAccess } from "@/lib/tollgate/service";
 import { AGENT_MODELS, withModelFallback } from "./models";
 
 export type AgentEvent =
@@ -11,13 +12,14 @@ export type AgentEvent =
   | { type: "open"; path: string }
   | { type: "quote"; path: string; title: string; priceCents: number; teaser: string; quoteId: string }
   | { type: "free"; path: string; title: string }
+  | { type: "owned"; path: string; title: string; priceCents: number; minutesAgo: number }
   | { type: "paid"; path: string; title: string; priceCents: number; reason: string; balance: string }
   | { type: "skipped"; path: string; title: string; priceCents: number; reason: string }
   | { type: "refused"; path: string; title: string; priceCents: number; reason: string }
   | { type: "answer"; text: string; sources: Source[]; spentCents: number; budgetCents: number }
   | { type: "error"; message: string };
 
-type Source = { path: string; title: string; priceCents: number; paid: boolean };
+type Source = { path: string; title: string; priceCents: number; paid: boolean; licensed?: boolean };
 // token is the signed Tollgate quote; the model only ever sees a short handle like "q1".
 type Quote = { path: string; title: string; priceCents: number; decided: boolean; token: string };
 
@@ -92,6 +94,24 @@ export async function runResearchAgent(opts: {
         if (result.kind === "quote") {
           const q = result.quote;
           const priceCents = Math.round(Number(q.price.value) * 100);
+
+          // Bought this licence a few minutes ago (e.g. in an earlier run)? Read it again, don't pay twice.
+          // A failed lookup only means the agent buys as usual.
+          const owned = await reissueAccess({ agentKey: opts.agentKey, path, license: "read" }).catch((err) => {
+            console.error("licence lookup failed", err);
+            return null;
+          });
+          if (owned) {
+            const page = await client.read(path, owned.accessToken);
+            if (page.kind === "content") {
+              library.set(path, { title: page.title, body: page.body });
+              sources.push({ path, title: page.title, priceCents: 0, paid: false, licensed: true });
+              const minutesAgo = Math.max(0, Math.round((Date.now() - owned.boughtAt.getTime()) / 60_000));
+              emit({ type: "owned", path, title: page.title, priceCents: owned.priceCents, minutesAgo });
+              return { status: "already_licensed", title: page.title, content: page.body };
+            }
+          }
+
           const handle = `q${quotes.size + 1}`;
           quotes.set(handle, { path, title: q.title, priceCents, decided: false, token: q.quote_id });
           emit({ type: "quote", path, title: q.title, priceCents, teaser: q.teaser, quoteId: handle });

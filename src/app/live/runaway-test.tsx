@@ -62,7 +62,9 @@ export function RunawayTest() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-semibold">🛡 Stress test: a runaway agent</p>
-          <p className="text-xs text-zinc-500">An agent stuck in a loop buys the same 1¢ article again and again. Watch the Spend Guardian stop it.</p>
+          <p className="text-xs text-zinc-500">
+            An agent stuck in a loop buys the same 1¢ article again and again, from its own test wallet. Watch the Spend Guardian stop it.
+          </p>
         </div>
         <button
           type="button"
@@ -100,7 +102,10 @@ export function RunawayTest() {
               <li key={i}>{s}</li>
             ))}
           </ul>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">No more payments or PayPal auto-recharges until the owner decides.</p>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            No more payments or PayPal auto-recharges from this wallet until the owner decides. Only the test wallet is frozen: the research
+            agent above keeps working, and each new run starts with a fresh test wallet.
+          </p>
           <form
             action={async (form) => {
               await unfreezeAgent(form);
