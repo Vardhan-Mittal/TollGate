@@ -38,8 +38,15 @@ How to work:
    worth more). Skip generic, redundant or off-topic material, and anything that would leave too little
    budget for more important sources.
 4. When you have read enough, write the final answer: a short, well-organised response (under 250 words)
-   that uses ONLY facts from sources you actually read. Cite them inline like [Title]. If you skipped
-   something potentially useful, say so in one line at the end.`;
+   that uses ONLY facts from sources you actually read. If you skipped something potentially useful,
+   say so in one line at the end.
+
+Citations (the reader's screen colours each sentence by the source it came from):
+- Every sentence or bullet that uses a source must END with that source's title in square brackets,
+  copied exactly as list_sources gives it, e.g. "Cell prices fell 20% this year [Exact Article Title]."
+- If a sentence uses two sources, end it with both: "... [First Title] [Second Title]."
+- Never shorten, paraphrase or translate a title, and never put anything else in square brackets.
+- Sentences that use no source (an intro or the skipped-sources line) get no brackets.`;
 }
 
 export async function runResearchAgent(opts: {

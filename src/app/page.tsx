@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { LiveBoard, LiveBoardSkeleton } from "@/components/live-board/live-board";
+import { GuardianSection } from "@/components/guardian-shield";
+import { FeatureGrid } from "@/components/landing/feature-grid";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { PublisherCta } from "@/components/landing/publisher-cta";
 import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { PaymentFlow } from "@/components/payment-flow";
 import { prisma } from "@/lib/db";
@@ -19,42 +23,6 @@ const IMPACT = [
     source: "Pew Research Center",
     href: "https://www.theregister.com/2025/07/22/google_ai_overviews_suppress_search/",
   },
-];
-
-const STEPS = [
-  {
-    title: "Detect",
-    text: "Tollgate sits in front of your site. Humans read free; AI crawlers and agents are recognised by user-agent or a Tollgate-Agent header.",
-  },
-  {
-    title: "Quote",
-    text: "Agents get HTTP 402 Payment Required with a price an AI set for that article, a license (read or train) and a teaser.",
-  },
-  {
-    title: "Decide & pay",
-    text: "The agent's own AI weighs the teaser against its budget, then pays from a wallet funded through PayPal.",
-  },
-  {
-    title: "Settle",
-    text: "The agent reads with a short-lived token. The publisher cashes out through PayPal Payouts or bills big AI customers by PayPal invoice.",
-  },
-];
-
-const PAYPAL = [
-  ["Orders v2 + JS SDK v6", "Agent owners top up wallets with the PayPal button"],
-  ["Vault (saved PayPal)", "Wallets auto-recharge with no human present"],
-  ["Payouts", "Publishers cash out their AI earnings"],
-  ["Agent Toolkit", "Agents create and send PayPal invoices for licenses and billing"],
-  ["Invoicing webhooks", "Paying a license invoice activates it automatically"],
-  ["Webhooks", "Signed, de-duplicated payment confirmations"],
-];
-
-const AI = [
-  ["Seller-side pricing", "Gemini appraises freshness, originality, depth and scarcity, and prices each article within the publisher's limits."],
-  ["Buyer-side agent", "A research agent reads each 402 quote and decides pay or skip, with a reason, under a hard budget."],
-  ["Agent-to-agent deals", "A buyer agent and the publisher's agent negotiate a bulk training license under private limits, then settle by PayPal invoice."],
-  ["Spend Guardian", "A risk model scores every agent payment against its own history and freezes the wallet when an agent goes rogue."],
-  ["Finance assistant", "Answers earnings questions, cashes out and invoices, and waits for a human yes before moving money."],
 ];
 
 const DEMOS = [
@@ -140,58 +108,13 @@ export default function Home() {
         </Suspense>
       </section>
 
-      <section className="mt-16">
-        <Reveal>
-          <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
-        </Reveal>
-        <Stagger as="ol" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((step, i) => (
-            <StaggerItem as="li" key={step.title} className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-              <p className="text-sm text-zinc-500">Step {i + 1}</p>
-              <p className="mt-1 text-lg font-semibold">{step.title}</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{step.text}</p>
-            </StaggerItem>
-          ))}
-        </Stagger>
-        <Reveal>
-        <pre className="mt-6 overflow-x-auto rounded-xl bg-zinc-950 p-5 text-sm leading-6 text-zinc-100">
-{`$ curl -i -A "GPTBot" https://<this-site>/blog/q3-2026-battery-cell-price-survey
-HTTP/1.1 402 Payment Required
-Tollgate-Price: 0.24 USD
-{ "quote_id": "…", "license": "read", "teaser": "Proprietary pricing data from 40 suppliers…",
-  "pay_url": "https://<this-site>/api/tollgate/pay" }`}
-        </pre>
-        </Reveal>
-      </section>
+      <HowItWorks />
 
-      <section className="mt-16 grid gap-8 lg:grid-cols-2">
-        <Reveal>
-          <h2 className="text-2xl font-semibold tracking-tight">Built on PayPal</h2>
-          <p className="mt-2 text-sm text-zinc-500">
-            Paying a few cents per page by card would cost more in fees than the payment itself. Tollgate pools agent spending in
-            PayPal-funded wallets and settles publishers in batches.
-          </p>
-          <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800">
-            {PAYPAL.map(([name, use]) => (
-              <li key={name} className="flex justify-between gap-4 py-2.5 text-sm">
-                <span className="font-medium">{name}</span>
-                <span className="text-right text-zinc-500">{use}</span>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <h2 className="text-2xl font-semibold tracking-tight">AI on both sides</h2>
-          <ul className="mt-4 space-y-4">
-            {AI.map(([name, text]) => (
-              <li key={name}>
-                <p className="font-medium">{name}</p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">{text}</p>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-      </section>
+      <GuardianSection />
+
+      <FeatureGrid />
+
+      <PublisherCta />
 
       <section className="mt-16">
         <Reveal>

@@ -1,95 +1,153 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
-import { useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform, type Variants } from "motion/react";
+import { useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import { formatCents } from "@/lib/money";
-import type { BoardEvent, BoardTotals } from "./data";
+import type { BoardData } from "./data";
+import { DealsPanel, GuardianPanel, PricingPanel } from "./insight-panels";
+import { clock, shortName } from "./shared";
+import { HUES, TrafficPanel, useTrafficFilters, type Outcome } from "./traffic-panel";
 
 const PILL = { type: "spring", stiffness: 500, damping: 36 } as const;
-const ROW = { type: "spring", stiffness: 420, damping: 38 } as const;
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 
-// Per-bot colours, assigned by how often each bot appears. Extra bots share the last one.
-const HUES = [
-  { dot: "bg-emerald-500", avatar: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  { dot: "bg-sky-500", avatar: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
-  { dot: "bg-violet-500", avatar: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
-  { dot: "bg-rose-500", avatar: "bg-rose-500/15 text-rose-700 dark:text-rose-300" },
-  { dot: "bg-zinc-400", avatar: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300" },
-];
+const TABS = [
+  { id: "traffic", label: "Traffic" },
+  { id: "pricing", label: "Pricing" },
+  { id: "deals", label: "Deals" },
+  { id: "guardian", label: "Guardian" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
 
-type Outcome = "all" | BoardEvent["outcome"];
-type License = "all" | BoardEvent["license"];
-
-// A clock shared by every row: null on the server, then ticks every 30 s in the browser.
-let now = 0;
-const clock = {
-  subscribe(onTick: () => void) {
-    const id = setInterval(() => {
-      now = Date.now();
-      onTick();
-    }, 30_000);
-    return () => clearInterval(id);
-  },
-  snapshot: () => (now ||= Date.now()),
-  server: () => null,
+// The pane slides a little in the direction of travel; exits are quicker than entrances.
+const SLIDE: Variants = {
+  enter: (dir: number) => ({ opacity: 0, x: dir * 16 }),
+  center: { opacity: 1, x: 0, transition: { duration: 0.2, ease: EASE_OUT } },
+  exit: (dir: number) => ({ opacity: 0, x: dir * -16, transition: { duration: 0.1, ease: EASE_OUT } }),
 };
+// Reduced motion: no movement, an instant swap.
+const SWAP: Variants = { enter: { opacity: 1 }, center: { opacity: 1 }, exit: { opacity: 1, transition: { duration: 0 } } };
 
-function ago(iso: string, at: number) {
-  const s = Math.max(0, Math.round((at - Date.parse(iso)) / 1000));
-  if (s < 45) return "just now";
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m ago`;
-  if (s < 86_400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86_400)}d ago`;
-}
+const num = (n: number) => n.toLocaleString("en-US");
 
-/** "RunawayAgent/0.1 (stuck in a loop)" → "RunawayAgent", for tight spaces. */
-const shortName = (bot: string) => bot.split(/[/(]/)[0].trim() || bot;
-
-export function LiveBoardWindow({ events, totals }: { events: BoardEvent[]; totals: BoardTotals }) {
+export function LiveBoardWindow({ data }: { data: BoardData }) {
   const uid = useId();
+  const reduce = useReducedMotion();
   const at = useSyncExternalStore(clock.subscribe, clock.snapshot, clock.server);
-  const [query, setQuery] = useState("");
-  const [bot, setBot] = useState("all");
-  const [outcome, setOutcome] = useState<Outcome>("all");
-  const [license, setLicense] = useState<License>("all");
+  const traffic = useTrafficFilters(data.events);
+  const [[tab, dir], setTabState] = useState<[Tab, number]>(["traffic", 0]);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Bots ranked by frequency; the top three get a filter button, all get a colour.
-  const bots = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const e of events) counts.set(e.bot, (counts.get(e.bot) ?? 0) + 1);
-    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([name]) => name);
-  }, [events]);
-  const hue = (name: string) => HUES[Math.min(bots.indexOf(name), HUES.length - 1)] ?? HUES[HUES.length - 1];
-
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return events.filter(
-      (e) =>
-        (bot === "all" || e.bot === bot) &&
-        (outcome === "all" || e.outcome === outcome) &&
-        (license === "all" || e.license === license) &&
-        (!q || e.bot.toLowerCase().includes(q) || e.title.toLowerCase().includes(q) || e.path.toLowerCase().includes(q)),
-    );
-  }, [events, query, bot, outcome, license]);
-
-  const filtered = query !== "" || bot !== "all" || outcome !== "all" || license !== "all";
-  const reset = () => {
-    setQuery("");
-    setBot("all");
-    setOutcome("all");
-    setLicense("all");
+  const select = (next: Tab) => {
+    if (next === tab) return;
+    const from = TABS.findIndex((t) => t.id === tab);
+    const to = TABS.findIndex((t) => t.id === next);
+    setTabState([next, Math.sign(to - from)]);
   };
 
-  const nav: { label: string; value: string; target?: Outcome }[] = [
-    { label: "Live traffic", value: String(rows.length), target: "all" },
-    { label: "Paid reads", value: totals.paidReads.toLocaleString("en-US"), target: "paid" },
-    { label: "Quotes", value: totals.quotes.toLocaleString("en-US"), target: "quoted" },
-    { label: "Earnings", value: `$${(totals.earningsCents / 100).toFixed(2)}` },
-    { label: "Deals", value: totals.deals.toLocaleString("en-US") },
-  ];
+  // Roving focus: arrows, Home and End move between tabs and select them.
+  const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = TABS.findIndex((t) => t.id === tab);
+    const keys: Record<string, number> = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: TABS.length - 1 };
+    if (!(e.key in keys)) return;
+    e.preventDefault();
+    const n = (keys[e.key] + TABS.length) % TABS.length;
+    select(TABS[n].id);
+    tabRefs.current[n]?.focus();
+  };
+
+  const { deals, guardian, pricing } = data;
+  const counts: Record<Tab, number> = {
+    traffic: data.events.length,
+    pricing: pricing.length,
+    deals: Object.values(deals.byStatus).reduce((a, b) => a + b, 0),
+    guardian: guardian.total,
+  };
+  const panelId = (t: Tab) => `${uid}-panel-${t}`;
+  const tabId = (t: Tab) => `${uid}-tab-${t}`;
+
+  const tabBar = (
+    <div className="mb-5 flex justify-center">
+      <div
+        role="tablist"
+        aria-label="Dashboard views"
+        onKeyDown={onTabKey}
+        className="flex max-w-full overflow-x-auto rounded-full border border-zinc-200 bg-white/80 p-1 shadow-sm backdrop-blur [scrollbar-width:none] dark:border-zinc-800 dark:bg-zinc-950/80 [&::-webkit-scrollbar]:hidden"
+      >
+        {TABS.map((t, i) => {
+          const selected = t.id === tab;
+          return (
+            <button
+              key={t.id}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              id={tabId(t.id)}
+              aria-selected={selected}
+              aria-controls={panelId(t.id)}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => select(t.id)}
+              className={`relative shrink-0 rounded-full px-4 py-1.5 text-sm font-medium outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+                selected ? "text-white dark:text-zinc-900" : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              }`}
+            >
+              {selected && (
+                <motion.span
+                  layoutId={`${uid}-tab`}
+                  transition={reduce ? { duration: 0 } : PILL}
+                  className="absolute inset-0 rounded-full bg-zinc-900 dark:bg-zinc-100"
+                />
+              )}
+              <span className="relative flex items-center gap-1.5">
+                {t.label}
+                <span className="hidden font-mono text-[11px] tabular-nums opacity-60 sm:inline">{num(counts[t.id])}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Sidebar detail under the tab list, specific to the open tab.
+  const detail: { label: string; value: string; target?: Outcome }[] = {
+    traffic: [
+      { label: "All visits", value: String(traffic.rows.length), target: "all" as const },
+      { label: "Paid reads", value: num(data.totals.paidReads), target: "paid" as const },
+      { label: "Quotes", value: num(data.totals.quotes), target: "quoted" as const },
+      { label: "Earnings", value: formatCents(data.totals.earningsCents) },
+    ],
+    pricing: [
+      { label: "Priced by AI", value: num(pricing.filter((r) => !r.overridden).length) },
+      { label: "Overridden", value: num(pricing.filter((r) => r.overridden).length) },
+      {
+        label: "Avg value",
+        value: (() => {
+          const scored = pricing.filter((r) => r.valueScore !== null);
+          return scored.length ? String(Math.round(scored.reduce((a, r) => a + (r.valueScore ?? 0), 0) / scored.length)) : "–";
+        })(),
+      },
+    ],
+    deals: [
+      { label: "Licensed", value: num(deals.byStatus.INVOICED + deals.byStatus.PAID) },
+      { label: "No deal", value: num(deals.byStatus.NO_DEAL) },
+      { label: "Agreed value", value: formatCents(deals.licensedCents) },
+    ],
+    guardian: [
+      { label: "Held", value: num(guardian.held) },
+      { label: "Flagged", value: num(guardian.flagged) },
+      { label: "Open", value: num(guardian.open) },
+    ],
+  }[tab];
+
+  const itemBase = "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5";
+  const activeItem = "bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-300";
+  const idleItem = "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/60";
 
   return (
-    <TiltIn>
+    <TiltIn bar={tabBar}>
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white/85 shadow-2xl shadow-emerald-900/10 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/85 dark:shadow-black/40">
         {/* Title bar */}
         <div className="relative flex h-10 items-center border-b border-zinc-200 px-4 dark:border-zinc-800">
@@ -99,7 +157,7 @@ export function LiveBoardWindow({ events, totals }: { events: BoardEvent[]; tota
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
           </div>
           <p className="absolute left-1/2 -translate-x-1/2 rounded-md bg-zinc-100 px-3 py-0.5 font-mono text-[11px] text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-            tollgate / dashboard
+            tollgate / {tab}
           </p>
         </div>
 
@@ -111,182 +169,95 @@ export function LiveBoardWindow({ events, totals }: { events: BoardEvent[]; tota
               Tollgate
             </p>
             <ul className="space-y-0.5 text-[13px]">
-              {nav.map((item) => {
-                const active = item.target !== undefined && item.target === outcome;
-                const inner = (
-                  <>
-                    <span>{item.label}</span>
-                    <span className="font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{item.value}</span>
-                  </>
-                );
-                const base = "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5";
-                return (
-                  <li key={item.label}>
-                    {item.target ? (
-                      <button
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => setOutcome(item.target!)}
-                        className={`${base} transition-colors ${
-                          active
-                            ? "bg-emerald-500/10 font-medium text-emerald-700 dark:text-emerald-300"
-                            : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/60"
-                        }`}
-                      >
-                        {inner}
-                      </button>
-                    ) : (
-                      <div className={`${base} text-zinc-600 dark:text-zinc-400`}>{inner}</div>
-                    )}
-                  </li>
-                );
-              })}
+              {TABS.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-current={t.id === tab ? "true" : undefined}
+                    onClick={() => select(t.id)}
+                    className={`${itemBase} transition-colors ${t.id === tab ? activeItem : idleItem}`}
+                  >
+                    <span>{t.label}</span>
+                    <span className="font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{num(counts[t.id])}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
             <div>
-              <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">Bots</p>
-              <ul className="mt-2 space-y-1.5 px-2 text-xs text-zinc-600 dark:text-zinc-400">
-                {bots.slice(0, HUES.length - 1).map((name) => (
-                  <li key={name} className="flex items-center gap-2">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${hue(name).dot}`} />
-                    <span className="truncate" title={name}>{shortName(name)}</span>
-                  </li>
-                ))}
-                {bots.length > HUES.length - 1 && (
-                  <li className="flex items-center gap-2">
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${HUES[HUES.length - 1].dot}`} />
-                    <span>Others</span>
-                  </li>
-                )}
+              <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">Overview</p>
+              <ul className="mt-2 space-y-0.5 text-[13px]">
+                {detail.map((item) => {
+                  const inner = (
+                    <>
+                      <span>{item.label}</span>
+                      <span className="font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{item.value}</span>
+                    </>
+                  );
+                  const target = item.target;
+                  return (
+                    <li key={item.label}>
+                      {target ? (
+                        <button
+                          type="button"
+                          aria-pressed={target === traffic.outcome}
+                          onClick={() => traffic.setOutcome(target)}
+                          className={`${itemBase} transition-colors ${target === traffic.outcome ? activeItem : idleItem}`}
+                        >
+                          {inner}
+                        </button>
+                      ) : (
+                        <div className={`${itemBase} text-zinc-600 dark:text-zinc-400`}>{inner}</div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
+            {tab === "traffic" && (
+              <div>
+                <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500">Bots</p>
+                <ul className="mt-2 space-y-1.5 px-2 text-xs text-zinc-600 dark:text-zinc-400">
+                  {traffic.bots.slice(0, HUES.length - 1).map((name) => (
+                    <li key={name} className="flex items-center gap-2">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${traffic.hue(name).dot}`} />
+                      <span className="truncate" title={name}>{shortName(name)}</span>
+                    </li>
+                  ))}
+                  {traffic.bots.length > HUES.length - 1 && (
+                    <li className="flex items-center gap-2">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${HUES[HUES.length - 1].dot}`} />
+                      <span>Others</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
           </aside>
 
-          {/* Main pane */}
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 p-3 dark:border-zinc-800">
-              <label className="relative min-w-0 flex-1 basis-full sm:basis-48">
-                <svg aria-hidden viewBox="0 0 16 16" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400">
-                  <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search bots or articles"
-                  aria-label="Search bots or articles"
-                  className="w-full rounded-lg border border-zinc-200 bg-transparent py-1.5 pl-8 pr-3 text-sm outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-800"
-                />
-              </label>
-              <Segmented
-                id={`${uid}-bot`}
-                label="Bot"
-                value={bot}
-                onChange={setBot}
-                options={[{ value: "all", label: "All bots" }, ...bots.slice(0, 3).map((b) => ({ value: b, label: shortName(b), title: b }))]}
-              />
-              <Segmented<Outcome>
-                id={`${uid}-outcome`}
-                label="Outcome"
-                value={outcome}
-                onChange={setOutcome}
-                options={[
-                  { value: "all", label: "All" },
-                  { value: "paid", label: "Paid" },
-                  { value: "quoted", label: "Quoted" },
-                ]}
-              />
-              <Segmented<License>
-                id={`${uid}-license`}
-                label="License"
-                value={license}
-                onChange={setLicense}
-                options={[
-                  { value: "all", label: "All" },
-                  { value: "read", label: "Read" },
-                  { value: "train", label: "Train" },
-                ]}
-              />
-            </div>
-
-            <div className="hidden grid-cols-[minmax(0,1.25fr)_minmax(0,1.4fr)_9.5rem_4.5rem] gap-3 border-b border-zinc-200 px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-zinc-500 sm:grid dark:border-zinc-800">
-              <span>Agent</span>
-              <span>Article</span>
-              <span className="text-right">Result</span>
-              <span className="text-right">When</span>
-            </div>
-
-            <div className="relative h-[420px] overflow-hidden [mask-image:linear-gradient(to_bottom,#000_75%,transparent)]">
-              <ul className="relative">
-                <AnimatePresence initial={false} mode="popLayout">
-                  {rows.map((e) => (
-                    <motion.li
-                      key={e.id}
-                      layout
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.96 }}
-                      transition={ROW}
-                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-zinc-100 px-4 py-2.5 sm:grid-cols-[minmax(0,1.25fr)_minmax(0,1.4fr)_9.5rem_4.5rem] dark:border-zinc-900"
-                    >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span aria-hidden className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold ${hue(e.bot).avatar}`}>
-                          {e.bot.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium" title={e.bot}>{shortName(e.bot)}</span>
-                          <span className="block truncate text-xs text-zinc-500 sm:hidden">{e.title}</span>
-                        </span>
-                      </div>
-                      <span className="hidden truncate text-sm text-zinc-600 sm:block dark:text-zinc-400" title={e.title}>
-                        {e.title}
-                      </span>
-                      <span className="flex items-center justify-end gap-1.5">
-                        <span className="rounded border border-zinc-200 px-1.5 py-px font-mono text-[10px] uppercase text-zinc-500 dark:border-zinc-800">
-                          {e.license}
-                        </span>
-                        <span
-                          className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-                            e.outcome === "paid"
-                              ? "bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-                              : "bg-amber-500/12 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-                          }`}
-                        >
-                          {e.outcome === "paid" ? "Paid" : "Quoted"} {formatCents(e.priceCents)}
-                        </span>
-                      </span>
-                      <time dateTime={e.time} className="hidden text-right font-mono text-xs tabular-nums text-zinc-500 sm:block">
-                        {at === null ? "" : ago(e.time, at)}
-                      </time>
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
-              </ul>
-
-              <AnimatePresence>
-                {rows.length === 0 && (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-x-0 top-20 flex flex-col items-center gap-3 px-6 text-center"
-                  >
-                    <p className="text-sm text-zinc-500">
-                      {events.length === 0 ? "No AI traffic yet. Run an agent to see it land here." : "No visits match these filters."}
-                    </p>
-                    {filtered && (
-                      <button
-                        type="button"
-                        onClick={reset}
-                        className="rounded-lg border border-zinc-300 px-3 py-1 text-xs font-medium hover:border-emerald-500 dark:border-zinc-700"
-                      >
-                        Clear filters
-                      </button>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+          {/* Content pane: fixed height so switching tabs never moves the page. */}
+          <div className="h-[560px] min-w-0 flex-1 overflow-hidden sm:h-[506px]">
+            <AnimatePresence mode="wait" initial={false} custom={dir}>
+              <motion.div
+                key={tab}
+                role="tabpanel"
+                id={panelId(tab)}
+                aria-labelledby={tabId(tab)}
+                // Panels without their own controls take focus so keyboard users can reach them.
+                tabIndex={tab === "traffic" ? undefined : 0}
+                custom={dir}
+                variants={reduce ? SWAP : SLIDE}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="flex h-full flex-col outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
+              >
+                {tab === "traffic" && <TrafficPanel uid={uid} f={traffic} total={data.events.length} at={at} />}
+                {tab === "pricing" && <PricingPanel rows={pricing} />}
+                {tab === "deals" && <DealsPanel deals={deals} at={at} />}
+                {tab === "guardian" && <GuardianPanel guardian={guardian} at={at} />}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -294,54 +265,8 @@ export function LiveBoardWindow({ events, totals }: { events: BoardEvent[]; tota
   );
 }
 
-type Option<T extends string> = { value: T; label: string; title?: string };
-
-/** A segmented control whose selected background glides between options. */
-function Segmented<T extends string>({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  id: string;
-  label: string;
-  value: T;
-  onChange: (v: T) => void;
-  options: Option<T>[];
-}) {
-  return (
-    <div role="group" aria-label={label} className="flex max-w-full rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-900">
-      {options.map((o) => {
-        const selected = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={selected}
-            title={o.title}
-            onClick={() => onChange(o.value)}
-            className={`relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${o.value === "all" ? "shrink-0" : "min-w-0"} ${
-              selected ? "text-zinc-900 dark:text-zinc-50" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-            }`}
-          >
-            {selected && (
-              <motion.span
-                layoutId={id}
-                transition={PILL}
-                className="absolute inset-0 rounded-md bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700"
-              />
-            )}
-            <span className="relative block max-w-[6.5rem] truncate">{o.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Tilts the window back and lifts it flat as it scrolls into view. */
-function TiltIn({ children }: { children: ReactNode }) {
+/** Tilts the window back and lifts it flat as it scrolls into view. The tab bar stays upright. */
+function TiltIn({ bar, children }: { bar: ReactNode; children: ReactNode }) {
   const target = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({ target, offset: ["start end", "start 0.3"] });
@@ -359,6 +284,7 @@ function TiltIn({ children }: { children: ReactNode }) {
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/3 -z-10 h-72 w-[70%] -translate-x-1/2 rounded-full bg-emerald-400/20 blur-3xl dark:bg-emerald-500/15"
       />
+      {bar}
       <motion.div style={reduce ? undefined : { rotateX, y, transformOrigin: "50% 0%" }}>{children}</motion.div>
     </div>
   );

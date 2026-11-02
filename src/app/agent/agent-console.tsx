@@ -3,6 +3,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { AnswerCard } from "@/components/answer-card";
+import { BudgetSlider } from "@/components/budget-slider";
 import type { AgentEvent } from "@/lib/ai/research-agent";
 
 const PRESETS = [
@@ -88,27 +90,7 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
             </button>
           ))}
         </div>
-        <div className="text-sm">
-          <span className="font-medium">Budget</span>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {BUDGETS.map((b) => (
-              <button
-                key={b}
-                type="button"
-                onClick={() => setBudgetCents(b)}
-                className={`relative rounded-lg border border-zinc-300 px-3 py-1.5 tabular-nums transition-colors dark:border-zinc-700 ${
-                  budgetCents === b ? "text-white dark:text-zinc-900" : ""
-                }`}
-              >
-                {/* The selected budget's background slides between buttons. */}
-                {budgetCents === b && (
-                  <motion.span layoutId="agent-budget" className="absolute -inset-px rounded-lg bg-zinc-900 dark:bg-white" />
-                )}
-                <span className="relative">{cents(b)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <BudgetSlider value={budgetCents} steps={BUDGETS} onChange={setBudgetCents} disabled={running} />
         <button
           disabled={running || task.trim().length < 5}
           className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-medium text-white disabled:opacity-50"
@@ -256,51 +238,4 @@ function EventRow({ event: e }: { event: AgentEvent }) {
     default:
       return null;
   }
-}
-
-// Renders the agent's answer: "- " bullets, **bold**, and [Title] citations.
-function AnswerCard({ answer }: { answer: Extract<AgentEvent, { type: "answer" }> }) {
-  const inline = (text: string) =>
-    text.split(/(\*\*[^*]+\*\*|\[[^\]]+\])/g).map((part, i) => {
-      if (part.startsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
-      if (part.startsWith("[")) {
-        return (
-          <span key={i} className="mx-0.5 rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-            {part.slice(1, -1)}
-          </span>
-        );
-      }
-      return part;
-    });
-
-  const lines = answer.text.split("\n").filter((l) => l.trim());
-
-  return (
-    <section className="rounded-xl border-2 border-emerald-500/40 p-5">
-      <h2 className="font-semibold">Answer</h2>
-      <div className="mt-3 space-y-2 text-[15px] leading-7">
-        {lines.map((line, i) =>
-          /^\s*[-*] /.test(line) ? (
-            <p key={i} className="pl-4 -indent-4">• {inline(line.replace(/^\s*[-*] /, ""))}</p>
-          ) : (
-            <p key={i}>{inline(line.replace(/^#+\s*/, ""))}</p>
-          ),
-        )}
-      </div>
-      <div className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
-        <p className="text-zinc-500">
-          Paid {cents(answer.spentCents)} of a {cents(answer.budgetCents)} budget to {answer.sources.filter((s) => s.paid).length} publisher
-          article(s), settled through the agent&apos;s PayPal-funded wallet.
-        </p>
-        <ul className="mt-2 space-y-1">
-          {answer.sources.map((s) => (
-            <li key={s.path} className="flex justify-between gap-3">
-              <a href={s.path} className="truncate hover:underline">{s.title}</a>
-              <span className="shrink-0 tabular-nums text-zinc-500">{s.paid ? cents(s.priceCents) : s.licensed ? "licensed" : "free"}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
 }

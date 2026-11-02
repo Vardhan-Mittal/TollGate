@@ -7,6 +7,7 @@ import { MIN_PAYOUT_CENTS, refreshPayout } from "@/lib/payouts";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
 import { PLATFORM_FEE_BPS } from "@/lib/tollgate/protocol";
 import { accounts } from "@/lib/tollgate/service";
+import { AnalyticsSection, AnalyticsSkeleton } from "./analytics/analytics-section";
 import { CashOutForm } from "./cash-out-form";
 import { FinanceAssistant } from "./finance-assistant";
 import { RepriceButton } from "./reprice-button";
@@ -119,6 +120,10 @@ async function Dashboard() {
           </div>
         ))}
       </div>
+
+      <Suspense fallback={<AnalyticsSkeleton />}>
+        <AnalyticsSection />
+      </Suspense>
 
       <div className="grid gap-8 lg:grid-cols-2">
         <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
