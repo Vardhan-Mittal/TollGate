@@ -37,29 +37,58 @@ const DEMOS = [
 export default function Home() {
   return (
     <main className="relative mx-auto w-full max-w-5xl overflow-x-clip px-4 py-14">
+      {/* Quiet backdrop: a fading dot grid and a faint spotlight from above, nothing coloured behind the text. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[640px] bg-dot-grid" />
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 left-1/3 -z-10 h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl motion-safe:animate-[drift_14s_ease-in-out_infinite] dark:bg-emerald-500/15"
+        className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[420px] w-[820px] max-w-[160vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(24_24_27/0.06),transparent)] blur-2xl dark:bg-[radial-gradient(closest-side,rgb(255_255_255/0.06),transparent)]"
       />
-      {/* The hero uses a CSS entrance, not <Reveal>: it must be visible on first paint, with or without JavaScript. */}
-      <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-emerald-600 motion-safe:animate-rise">
-        <span className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
-        Tollgate
-      </p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight [animation-delay:80ms] motion-safe:animate-rise sm:text-6xl">
-        AI agents pay{" "}
-        <span className="font-serif text-[1.08em] font-normal italic text-emerald-600 sm:block sm:whitespace-nowrap">the web they read.</span>
-      </h1>
-      <p className="mt-6 max-w-2xl text-lg text-zinc-600 [animation-delay:160ms] motion-safe:animate-rise dark:text-zinc-400">
-        AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
-        402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
-        on PayPal.
-      </p>
 
-      <PaymentFlow />
+      {/* The hero uses a CSS entrance, not <Reveal>: it must be visible on first paint, with or without JavaScript. */}
+      <div className="flex flex-col items-center pt-6 text-center sm:pt-10">
+        <Link
+          href="/live"
+          className="group inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/60 py-1 pl-1 pr-3 text-sm text-zinc-600 backdrop-blur transition-colors hover:border-zinc-300 motion-safe:animate-rise dark:border-white/10 dark:bg-white/[0.03] dark:text-zinc-400 dark:hover:border-white/20"
+        >
+          <span className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider text-emerald-700 dark:border-white/10 dark:text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
+            Live
+          </span>
+          AI agents paying on the <span className="text-zinc-900 dark:text-zinc-100">PayPal sandbox</span>
+          <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        </Link>
+        <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-[-0.04em] [animation-delay:80ms] motion-safe:animate-rise sm:text-7xl">
+          <span className="text-sheen">AI agents pay</span>
+          <br />
+          <span className="text-zinc-400 dark:text-zinc-500">the web they </span>
+          <span className="font-serif text-[1.1em] font-normal italic tracking-[-0.01em] text-emerald-600 dark:text-emerald-400">read.</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-lg text-pretty text-zinc-600 [animation-delay:160ms] motion-safe:animate-rise dark:text-zinc-400">
+          An open HTTP 402 paywall for machines. Creators set the rules, AI sets the price, agents decide what is worth buying, and
+          everyone settles on PayPal.
+        </p>
+        <div className="mt-8 flex [animation-delay:240ms] motion-safe:animate-rise flex-wrap justify-center gap-3">
+          <Link
+            href="/live"
+            className="group inline-flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-3 font-medium text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:shadow-[0_0_32px_rgb(255_255_255/0.12)] dark:hover:bg-white"
+          >
+            Watch an agent pay <span className="transition-transform group-hover:translate-x-0.5">→</span>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="rounded-full border border-zinc-200 bg-white/60 px-6 py-3 font-medium transition-colors hover:border-zinc-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"
+          >
+            See what publishers earn
+          </Link>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-3xl">
+        <PaymentFlow />
+      </div>
 
       {/* Near the fold on most screens, so these use the CSS entrance too. */}
-      <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
+      <div className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
         {IMPACT.map((item, i) => (
           <div key={item.stat} style={{ animationDelay: `${520 + i * 90}ms` }} className="motion-safe:animate-rise">
             <Lift>
@@ -78,14 +107,6 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/live" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
-          Watch an agent pay
-        </Link>
-        <Link href="/dashboard" className="rounded-lg border border-zinc-300 px-5 py-2.5 font-medium dark:border-zinc-700">
-          See what publishers earn
-        </Link>
-      </div>
 
       <Suspense fallback={<div className="mt-12 h-24" />}>
         <LiveStats />

@@ -26,6 +26,27 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Headlines: the ink fades slightly toward the baseline, like light on brushed metal. */
+@utility text-sheen {
+  background-image: linear-gradient(180deg, #18181b 35%, #71717a 110%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  @media (prefers-color-scheme: dark) {
+    background-image: linear-gradient(180deg, #fafafa 35%, #a1a1aa 110%);
+  }
+}
+
+/* A faint dot grid that fades out toward the edges; sits behind hero sections. */
+@utility bg-dot-grid {
+  background-image: radial-gradient(rgb(113 113 122 / 0.22) 1px, transparent 1.2px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 35%, #000 30%, transparent 75%);
+  @media (prefers-color-scheme: dark) {
+    background-image: radial-gradient(rgb(161 161 170 / 0.14) 1px, transparent 1.2px);
+  }
+}
+
 /* A soft light that drifts behind the landing page headline. */
 @keyframes drift {
   0%,

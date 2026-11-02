@@ -82,9 +82,9 @@ type Palette = { base: number[]; a: number[]; b: number[]; strength: number; gra
 
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
-// Dark: bright emerald and teal on near-black. Light: pale mint washes on white.
-const DARK: Palette = { base: hex("#0a0a0a"), a: hex("#10b981"), b: hex("#14b8a6"), strength: 0.55, grain: 0.05 };
-const LIGHT: Palette = { base: hex("#ffffff"), a: hex("#6ee7b7"), b: hex("#99f6e4"), strength: 0.45, grain: 0.035 };
+// Muted on purpose: a dim teal-slate haze that reads as texture, never as colour behind text.
+const DARK: Palette = { base: hex("#0a0a0a"), a: hex("#1f4a44"), b: hex("#1c3a4a"), strength: 0.32, grain: 0.07 };
+const LIGHT: Palette = { base: hex("#ffffff"), a: hex("#cfe9e1"), b: hex("#d6e6ee"), strength: 0.3, grain: 0.04 };
 
 /** Slow emerald aurora drawn by a fragment shader, with a CSS gradient behind it as the fallback. */
 export function Aurora({ className = "", grain = true }: { className?: string; grain?: boolean }) {
