@@ -104,7 +104,7 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 | **Pricing engine** (`src/lib/ai/pricing.ts`) | Scores freshness, originality, depth and scarcity; sets read/train prices, a teaser and a plain-English reason | Prices clamped to publisher limits; scores normalised |
 | **Research agent** (`src/lib/ai/research-agent.ts`) | Browses the catalog, reads 402 quotes, decides pay or skip with a reason, answers with citations | Hard budget cap; each quote paid at most once; a page it bought in the last 10 minutes is re-read on the same licence, never bought twice; wallet never below zero |
 | **Negotiating agents** (`src/lib/ai/negotiation.ts`) | A buyer agent and the publisher's agent bargain over a bulk training license, each with private limits | Buyer can never exceed its budget, publisher never goes below its floor; crossing offers close the deal; the invoice is created by code via the PayPal Agent Toolkit |
-| **Spend Guardian** (`src/lib/guardian.ts`) | Scores every agent payment against that agent's own history (repeat purchases, velocity, spend bursts, price outliers, unusual hours); the LLM writes the owner a plain-English fraud-alert note | High risk holds the payment and freezes the wallet (HTTP 423), auto-recharge stops, and only the owner can unfreeze |
+| **Spend Guardian** (`src/lib/guardian.ts`) | Scores every agent payment against that agent's own history (repeat purchases, velocity, spend bursts, price outliers, unusual hours); the LLM writes the owner a plain-English fraud-alert note | High risk holds the payment and freezes the wallet (HTTP 423) and auto-recharge stops until a human unfreezes it; payments are checked one at a time per agent, so a burst of simultaneous payments cannot slip past |
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
 
 Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
@@ -134,7 +134,13 @@ Everything runs on the **PayPal sandbox**: no real money moves.
 
 Sandbox buyer login (fake money only): provided in the Devpost submission's testing instructions.
 
-Public-demo guardrails (`DEMO_MODE=true`): payouts always go to the demo publisher's sandbox account, invoices only to `example.com` addresses, AI endpoints are rate-limited, and the shared saved PayPal account cannot be removed.
+Public-demo guardrails (`DEMO_MODE=true`). The demo has no sign-in, so anyone can press every button; the guardrails keep it working for the next judge:
+
+- payouts always go to the demo publisher's sandbox account (and are disabled if that account is not configured);
+- invoices go only to `example.com` addresses, checked again when an invoice is sent;
+- the shared demo agent's saved PayPal and auto-recharge settings cannot be changed or removed, and its wallet is cleared before each run if a visitor's test froze it;
+- the Spend Guardian demo uses its own test wallet;
+- article prices can't be set below 1¢, bot and agent names are filtered, and AI endpoints, price edits and agent creation are rate-limited.
 
 ## PayPal webhooks (deployed only)
 

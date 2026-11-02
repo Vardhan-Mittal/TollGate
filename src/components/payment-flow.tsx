@@ -24,19 +24,18 @@ export function PaymentFlow() {
       />
       <ol className="relative grid grid-cols-4 text-center">
         {NODES.map((node, i) => (
-          <motion.li
+          // CSS entrance, so the steps show on first paint even before (or without) JavaScript.
+          <li
             key={node.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 + i * 0.12 }}
-            className="flex flex-col items-center"
+            style={{ animationDelay: `${280 + i * 90}ms` }}
+            className="flex flex-col items-center motion-safe:animate-rise"
           >
             <span className="grid h-10 w-10 place-items-center rounded-full border border-zinc-300 bg-background text-sm font-semibold tabular-nums dark:border-zinc-700">
               {i + 1}
             </span>
             <span className="mt-2 text-xs font-semibold sm:text-sm">{node.label}</span>
             <span className="text-[11px] text-zinc-500 sm:text-xs">{node.sub}</span>
-          </motion.li>
+          </li>
         ))}
       </ol>
     </div>

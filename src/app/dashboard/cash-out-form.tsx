@@ -24,19 +24,25 @@ export function CashOutForm({
     e.preventDefault();
     setPending(true);
     setMessage(null);
-    const res = await fetch("/api/publisher/payout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const body = await res.json();
-    setPending(false);
-    setMessage(
-      res.ok
-        ? { ok: true, text: `Sent $${body.amount} to PayPal (batch ${body.paypal_batch_id}, ${body.paypal_status}).` }
-        : { ok: false, text: body.message ?? "Payout failed." },
-    );
-    router.refresh();
+    try {
+      const res = await fetch("/api/publisher/payout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      // A 5xx can come back as HTML, so don't let parsing throw.
+      const body = await res.json().catch(() => ({}));
+      setMessage(
+        res.ok
+          ? { ok: true, text: `Sent $${body.amount} to PayPal (batch ${body.paypal_batch_id}, ${body.paypal_status}).` }
+          : { ok: false, text: body.message ?? "Payout failed." },
+      );
+      router.refresh();
+    } catch {
+      setMessage({ ok: false, text: "Couldn't reach the server. Check your connection and try again." });
+    } finally {
+      setPending(false);
+    }
   }
 
   return (

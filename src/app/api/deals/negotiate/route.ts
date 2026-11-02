@@ -2,10 +2,15 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { runNegotiation, type NegotiationEvent } from "@/lib/ai/negotiation";
 import { prisma } from "@/lib/db";
+import { restoreDemoAgent } from "@/lib/demo-agent";
+import { errorResponse } from "@/lib/http";
 import { acquireLock, rateLimit, releaseLock } from "@/lib/rate-limit";
+import { publicErrorMessage } from "@/lib/safe-error";
 import { findAgentByKey } from "@/lib/tollgate/service";
 
 const Body = z.object({ budgetCents: z.number().int().min(50).max(2000) });
+// Plain errors from the negotiation that are written for the visitor and safe to show.
+const USER_FACING = /^(No paid articles|The buyer agent has no saved PayPal|Invoice recipient is not allowed)/;
 
 // Streams a buyer-agent vs publisher-agent negotiation as NDJSON events.
 export async function POST(req: NextRequest) {
@@ -16,7 +21,19 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "bad_request", message: "Budget must be $0.50–$20.00." }, { status: 400 });
   const agentKey = process.env.DEMO_AGENT_KEY;
   if (!agentKey) return NextResponse.json({ error: "not_configured", message: "DEMO_AGENT_KEY is not set." }, { status: 500 });
-  const agent = await findAgentByKey(agentKey);
+
+  let agent: Awaited<ReturnType<typeof findAgentByKey>>;
+  try {
+    agent = await findAgentByKey(agentKey);
+    await restoreDemoAgent(agent);
+  } catch (err) {
+    console.error("negotiation setup failed", err);
+    try {
+      return errorResponse(err);
+    } catch {
+      return NextResponse.json({ error: "negotiation_failed", message: "Could not start the negotiation." }, { status: 500 });
+    }
+  }
 
   // One run at a time across all servers keeps the public demo (and the AI quota) from being flooded.
   if (!(await acquireLock("negotiation", 5 * 60_000))) {
@@ -35,8 +52,11 @@ export async function POST(req: NextRequest) {
       try {
         await runNegotiation({ agentId: agent.id, budgetCents: parsed.data.budgetCents, emit });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Negotiation failed.";
         console.error("negotiation failed", err);
+        const message =
+          err instanceof Error && USER_FACING.test(err.message)
+            ? err.message
+            : publicErrorMessage(err, "Negotiation failed. Try again in a moment.");
         if (dealId) {
           await prisma.deal
             .updateMany({ where: { id: dealId, status: "NEGOTIATING" }, data: { status: "FAILED", failureReason: message.slice(0, 500) } })

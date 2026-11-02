@@ -185,15 +185,16 @@ async function main() {
     console.log("Created a demo agent key and saved it to .env.local as DEMO_AGENT_KEY");
   }
   const hash = hashAgentKey(key);
+  // No daily budget: the shared demo wallet serves every visitor, and each run has its own budget cap.
   await prisma.agent.upsert({
     where: { apiKeyHash: hash },
-    update: {},
+    update: { dailyBudgetCents: null },
     create: {
       name: "Demo Research Agent",
       apiKeyHash: hash,
       apiKeyPrefix: key.slice(0, 15),
       balanceCents: 500,
-      dailyBudgetCents: 200,
+      dailyBudgetCents: null,
     },
   });
 

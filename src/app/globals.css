@@ -46,3 +46,41 @@ body {
     box-shadow: 0 0 0 8px rgb(16 185 129 / 0);
   }
 }
+
+/* Above-the-fold entrance in pure CSS: it starts with the first paint, needs no JavaScript,
+   and always ends visible. Used as `motion-safe:animate-rise` plus an animation-delay. */
+@theme {
+  --animate-rise: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Scroll reveals (Reveal / StaggerItem) start hidden and wait for Motion to show them.
+   Without JavaScript, show them at once. If JavaScript is slow or fails, fade them in
+   after a few seconds; MotionProvider sets data-hydrated, which hands control back to Motion. */
+@media (scripting: none) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+html:not([data-hydrated]) [data-reveal] {
+  animation: reveal-failsafe 0.4s ease-out 3s forwards;
+}
+
+@keyframes reveal-failsafe {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -54,14 +54,22 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
       savePayment: save,
       async onApprove({ orderId }) {
         setStatus({ kind: "working", message: "Confirming payment with PayPal…" });
-        const res = await fetch(`/api/wallet/orders/${orderId}/capture`, { method: "POST" });
-        const body = await res.json();
-        if (!res.ok) {
-          setStatus({ kind: "error", message: body.message ?? "Capture failed." });
-          return;
+        try {
+          const res = await fetch(`/api/wallet/orders/${orderId}/capture`, { method: "POST" });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setStatus({ kind: "error", message: body.message ?? "Capture failed." });
+            return;
+          }
+          setStatus({ kind: "done", message: body.credited === false ? "Already credited." : "Wallet topped up." });
+        } catch {
+          setStatus({
+            kind: "error",
+            message: "Couldn't confirm the payment. If PayPal charged you, the webhook will still credit the wallet.",
+          });
+        } finally {
+          router.refresh();
         }
-        setStatus({ kind: "done", message: body.credited === false ? "Already credited." : "Wallet topped up." });
-        router.refresh();
       },
       onCancel() {
         setStatus({ kind: "idle", message: "Payment cancelled." });
@@ -80,7 +88,7 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentId, amountCents, save }),
     });
-    const body = await res.json();
+    const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.message ?? "Could not create the PayPal order.");
     return { orderId: body.orderId as string };
   }

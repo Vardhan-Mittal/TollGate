@@ -1,6 +1,7 @@
 import "server-only";
 import { generateText } from "ai";
 import { AGENT_MODELS, withModelFallback } from "@/lib/ai/models";
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
 // Spend Guardian: a lightweight risk model for agent wallets. Like a card
@@ -28,9 +29,13 @@ function percentile(sorted: number[], p: number) {
   return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
 }
 
-export async function assessPayment(opts: { agentId: string; resourceId: string; priceCents: number; now?: Date }): Promise<Assessment> {
+/** Pass the payment transaction as `db` so the score sees every committed payment (see payQuote). */
+export async function assessPayment(
+  opts: { agentId: string; resourceId: string; priceCents: number; now?: Date },
+  db: Prisma.TransactionClient = prisma,
+): Promise<Assessment> {
   const now = opts.now ?? new Date();
-  const paid = await prisma.quote.findMany({
+  const paid = await db.quote.findMany({
     where: { agentId: opts.agentId, status: "PAID", paidAt: { gte: new Date(now.getTime() - HISTORY_MS) } },
     select: { resourceId: true, priceCents: true, paidAt: true },
     orderBy: { paidAt: "desc" },
@@ -109,8 +114,13 @@ export async function assessPayment(opts: { agentId: string; resourceId: string;
 }
 
 /** Records a flag or hold; a hold also freezes the wallet until a human reviews it. */
-export async function recordRisk(agentId: string, assessment: Assessment, payment: { resourceId: string; priceCents: number }) {
-  const event = await prisma.riskEvent.create({
+export async function recordRisk(
+  agentId: string,
+  assessment: Assessment,
+  payment: { resourceId: string; priceCents: number },
+  db: Prisma.TransactionClient = prisma,
+) {
+  const event = await db.riskEvent.create({
     data: {
       agentId,
       decision: assessment.decision,
@@ -122,7 +132,7 @@ export async function recordRisk(agentId: string, assessment: Assessment, paymen
     },
   });
   if (assessment.decision === "HOLD") {
-    await prisma.agent.update({
+    await db.agent.update({
       where: { id: agentId },
       data: { frozenAt: new Date(), frozenReason: assessment.summary.slice(0, 500) },
     });

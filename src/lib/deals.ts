@@ -61,23 +61,36 @@ export async function invoiceDeal(dealId: string) {
   );
   const invoiceId: string | undefined = created.id ?? created.href?.split("/").pop();
   if (!invoiceId) throw new Error(`PayPal did not return an invoice id: ${JSON.stringify(created).slice(0, 200)}`);
+  // Saved before sending: if anything below fails after the buyer got the
+  // invoice, the PAID webhook can still find this deal and settle it.
+  await prisma.deal.update({ where: { id: deal.id }, data: { paypalInvoiceId: invoiceId } });
 
   await api.run("send_invoice", { invoice_id: invoiceId, send_to_recipient: true, note: "Thank you for licensing our work." });
   const invoice = JSON.parse(await api.run("get_invoice", { invoice_id: invoiceId }));
   const url: string | undefined = invoice.detail?.metadata?.recipient_view_url;
 
-  await prisma.deal.update({
-    where: { id: deal.id },
-    data: { status: "INVOICED", paypalInvoiceId: invoiceId, invoiceUrl: url ?? null },
+  // Conditional, so a payment that already landed is never turned back into INVOICED.
+  await prisma.deal.updateMany({
+    where: { id: deal.id, status: "NEGOTIATING" },
+    data: { status: "INVOICED", invoiceUrl: url ?? null },
   });
   return { invoiceId, url: url ?? null };
 }
 
-/** Marks a deal paid and credits the publisher (net of the platform fee). Idempotent. */
-export async function markDealPaid(dealId: string) {
+/**
+ * Marks a deal paid and credits the publisher (net of the platform fee). Idempotent.
+ * `invoicePaid` means PayPal confirmed the invoice was paid (the webhook): the
+ * deal settles even if invoicing was later marked FAILED or never finished.
+ */
+export async function markDealPaid(dealId: string, opts: { invoicePaid?: boolean } = {}) {
   return prisma.$transaction(async (tx) => {
     const flipped = await tx.deal.updateMany({
-      where: { id: dealId, status: "INVOICED" },
+      where: {
+        id: dealId,
+        ...(opts.invoicePaid
+          ? { paypalInvoiceId: { not: null }, status: { in: ["INVOICED", "FAILED", "NEGOTIATING"] } }
+          : { status: "INVOICED" }),
+      },
       data: { status: "PAID", paidAt: new Date() },
     });
     if (flipped.count === 0) return false;

@@ -28,12 +28,20 @@ export async function prepareSimulationAgent() {
       data: { resolution: "Closed when a new simulation run started.", resolvedAt: new Date() },
     });
 
-    // Test credit, not PayPal money: recorded in the ledger as a simulation top-up.
+    // Test credit, not PayPal money: labelled "simulation-credit" in the ledger,
+    // once per run (the run's key hash is unique). What the loop then buys is
+    // booked to accounts.simulation, never to a real publisher (see payQuote).
     const topUp = SIMULATION_BALANCE_CENTS - agent.balanceCents;
     if (topUp > 0) {
       await tx.agent.update({ where: { id: agent.id }, data: { balanceCents: { increment: topUp } } });
       await tx.ledgerEntry.create({
-        data: { account: accounts.agent(agent.id), kind: "TOPUP", amountCents: topUp, externalRef: "simulation-credit" },
+        data: {
+          account: accounts.agent(agent.id),
+          kind: "TOPUP",
+          amountCents: topUp,
+          externalRef: "simulation-credit",
+          idempotencyKey: `simulation-credit:${hash}`,
+        },
       });
     }
   });

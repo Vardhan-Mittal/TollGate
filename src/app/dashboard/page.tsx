@@ -32,9 +32,11 @@ const STATUS_STYLE = {
 };
 
 async function Dashboard() {
-  // Pull fresh status from PayPal for payouts still in flight.
+  // Pull fresh status from PayPal for payouts still in flight, but never wait more than 2 s:
+  // a slow PayPal shouldn't hold the dashboard. A late refresh still lands for the next view.
   const pending = await prisma.payout.findMany({ where: { publisherId: DEMO_PUBLISHER_ID, status: "PENDING" } });
-  await Promise.all(pending.map((p) => refreshPayout(p.id).catch((err) => console.error("refreshPayout", err))));
+  const refreshing = Promise.all(pending.map((p) => refreshPayout(p.id).catch((err) => console.error("refreshPayout", err))));
+  await Promise.race([refreshing, new Promise((resolve) => setTimeout(resolve, 2_000))]);
 
   const account = accounts.publisher(DEMO_PUBLISHER_ID);
   const [publisher, earned, paidReads, quotes, payouts, visits, resources, quotedVisits, paidQuotes] = await Promise.all([

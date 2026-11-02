@@ -63,7 +63,7 @@ export function RunawayTest() {
         <div>
           <p className="font-semibold">🛡 Stress test: a runaway agent</p>
           <p className="text-xs text-zinc-500">
-            An agent stuck in a loop buys the same 1¢ article again and again, from its own test wallet. Watch the Spend Guardian stop it.
+            An agent stuck in a loop buys the same cheap article again and again, from its own test wallet. Watch the Spend Guardian stop it.
           </p>
         </div>
         <button

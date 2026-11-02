@@ -57,8 +57,9 @@ async function handle(event: WebhookEvent) {
     }
 
     case "INVOICING.INVOICE.PAID": {
+      // Also settles a deal whose invoicing step was marked FAILED after the invoice went out.
       const deal = await prisma.deal.findUnique({ where: { paypalInvoiceId: r.id as string } });
-      if (deal) await markDealPaid(deal.id);
+      if (deal) await markDealPaid(deal.id, { invoicePaid: true });
       return;
     }
 

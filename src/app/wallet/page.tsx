@@ -2,10 +2,16 @@ import { Suspense } from "react";
 import { PayPalTopUp } from "@/components/paypal-top-up";
 import { prisma } from "@/lib/db";
 import { DEMO_MODE } from "@/lib/demo";
+import { demoAgentKeyHash } from "@/lib/demo-agent";
+import { SIMULATION_AGENT_ID } from "@/lib/guardian-simulation";
 import { formatCents } from "@/lib/money";
 import { accounts } from "@/lib/tollgate/service";
-import { disableAutoRecharge, forgetPayPal, keepFrozen, saveAutoRecharge, unfreezeAgent } from "./actions";
+import { forgetPayPal, keepFrozen, unfreezeAgent } from "./actions";
+import { AutoRechargeControls } from "./auto-recharge-controls";
 import { CreateAgentForm } from "./create-agent-form";
+
+// Visitor-created wallets shown below the two demo wallets (the public demo has no sign-in).
+const RECENT_AGENTS = 10;
 
 export default function WalletPage() {
   return (
@@ -28,10 +34,16 @@ export default function WalletPage() {
 }
 
 async function AgentList() {
-  const agents = await prisma.agent.findMany({
-    orderBy: { createdAt: "asc" },
-    include: { riskEvents: { orderBy: { createdAt: "desc" }, take: 3 } },
-  });
+  const demoHash = demoAgentKeyHash();
+  const include = { riskEvents: { orderBy: { createdAt: "desc" as const }, take: 3 } };
+  const isPinned = { OR: [{ id: SIMULATION_AGENT_ID }, ...(demoHash ? [{ apiKeyHash: demoHash }] : [])] };
+  const [pinned, recent] = await Promise.all([
+    prisma.agent.findMany({ where: isPinned, include }),
+    prisma.agent.findMany({ where: { NOT: isPinned }, orderBy: { createdAt: "desc" }, take: RECENT_AGENTS, include }),
+  ]);
+  // Demo wallet first, then the Guardian simulation wallet, then the newest visitor agents.
+  pinned.sort((a, b) => Number(b.apiKeyHash === demoHash) - Number(a.apiKeyHash === demoHash));
+  const agents = [...pinned, ...recent];
   const ledger = await prisma.ledgerEntry.findMany({
     where: { account: { in: agents.map((a) => accounts.agent(a.id)) } },
     orderBy: { createdAt: "desc" },
@@ -45,6 +57,7 @@ async function AgentList() {
       {agents.map((agent) => {
         const activity = ledger.filter((e) => e.account === accounts.agent(agent.id)).slice(0, 8);
         const autoOn = agent.autoRechargeAmountCents != null && agent.autoRechargeThresholdCents != null;
+        const sharedDemo = DEMO_MODE && agent.apiKeyHash === demoHash;
 
         return (
           <section key={agent.id} className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
@@ -82,39 +95,30 @@ async function AgentList() {
                 {agent.paypalVaultId ? (
                   <div className="space-y-3 text-sm">
                     <p className="text-emerald-700 dark:text-emerald-400">PayPal saved for this agent.</p>
-                    <form action={saveAutoRecharge} className="flex flex-wrap items-end gap-3">
-                      <input type="hidden" name="agentId" value={agent.id} />
-                      <label>
-                        <span className="block text-zinc-500">When below ($)</span>
-                        <input name="threshold" type="number" min="0" max="100" step="0.5" defaultValue={((agent.autoRechargeThresholdCents ?? 100) / 100).toFixed(2)} className="mt-1 w-24 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700" />
-                      </label>
-                      <label>
-                        <span className="block text-zinc-500">Add ($)</span>
-                        <input name="amount" type="number" min="1" max="100" step="1" defaultValue={((agent.autoRechargeAmountCents ?? 500) / 100).toFixed(0)} className="mt-1 w-24 rounded-lg border border-zinc-300 bg-transparent px-2 py-1 dark:border-zinc-700" />
-                      </label>
-                      <button className="rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white dark:bg-white dark:text-zinc-900">
-                        {autoOn ? "Update" : "Turn on"}
-                      </button>
-                    </form>
+                    {!sharedDemo && (
+                      <AutoRechargeControls
+                        agentId={agent.id}
+                        thresholdCents={agent.autoRechargeThresholdCents}
+                        amountCents={agent.autoRechargeAmountCents}
+                        maxAmountDollars={DEMO_MODE ? 5 : 100}
+                      />
+                    )}
                     <p className="text-zinc-500">
                       {autoOn
                         ? `On: adds ${formatCents(agent.autoRechargeAmountCents!)} when the balance drops below ${formatCents(agent.autoRechargeThresholdCents!)}.`
                         : "Off."}
                     </p>
-                    <div className="flex gap-3">
-                      {autoOn && (
-                        <form action={disableAutoRecharge}>
-                          <input type="hidden" name="agentId" value={agent.id} />
-                          <button className="text-zinc-600 underline dark:text-zinc-400">Turn off</button>
-                        </form>
-                      )}
-                      {!DEMO_MODE && (
-                        <form action={forgetPayPal}>
-                          <input type="hidden" name="agentId" value={agent.id} />
-                          <button className="text-red-600 underline">Remove saved PayPal</button>
-                        </form>
-                      )}
-                    </div>
+                    {sharedDemo && (
+                      <p className="text-zinc-500">
+                        Fixed on the shared demo wallet so every visitor&apos;s run can pay. Create your own agent below to try it.
+                      </p>
+                    )}
+                    {!DEMO_MODE && (
+                      <form action={forgetPayPal}>
+                        <input type="hidden" name="agentId" value={agent.id} />
+                        <button className="text-red-600 underline">Remove saved PayPal</button>
+                      </form>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-zinc-500">
@@ -132,7 +136,7 @@ async function AgentList() {
                 {activity.map((e) => (
                   <li key={e.id} className="flex justify-between py-2">
                     <span>
-                      {e.kind === "TOPUP" ? "PayPal top-up" : "Paid for content"}
+                      {e.kind === "TOPUP" ? (e.externalRef === "simulation-credit" ? "Test credit (simulation)" : "PayPal top-up") : "Paid for content"}
                       <span className="ml-2 text-zinc-500">{e.createdAt.toLocaleString("en-US")}</span>
                     </span>
                     <span className={`tabular-nums ${e.amountCents > 0 ? "text-emerald-600" : ""}`}>
@@ -184,6 +188,7 @@ function FrozenBanner({
           </button>
         </form>
         <form action={keepFrozen}>
+          <input type="hidden" name="agentId" value={agentId} />
           {event && <input type="hidden" name="eventId" value={event.id} />}
           <button className="rounded-lg border border-red-400 px-3 py-1.5 font-medium text-red-700 dark:text-red-300">Keep frozen</button>
         </form>

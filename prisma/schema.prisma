@@ -97,6 +97,9 @@ model Quote {
   paidAt     DateTime?
   createdAt  DateTime     @default(now())
   grant      AccessGrant?
+
+  // Spend Guardian history scan on every payment.
+  @@index([agentId, paidAt])
 }
 
 model AccessGrant {
@@ -110,6 +113,9 @@ model AccessGrant {
   license    License
   priceCents Int
   createdAt  DateTime @default(now())
+
+  // Licence reuse lookup (reissueAccess).
+  @@index([agentId, resourceId, createdAt])
 }
 
 enum LedgerKind {

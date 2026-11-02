@@ -8,13 +8,23 @@ export const SPRING = { type: "spring", stiffness: 260, damping: 26 } as const;
 
 /** Honours the visitor's "reduce motion" setting everywhere below it. */
 export function MotionProvider({ children }: { children: ReactNode }) {
+  // Tells globals.css that Motion is running, which turns off the reveal failsafe.
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = "";
+  }, []);
   return <MotionConfig reducedMotion="user" transition={SPRING}>{children}</MotionConfig>;
 }
 
-/** Fades and lifts its children in the first time they scroll into view. */
+/**
+ * Fades and lifts its children in the first time they scroll into view.
+ * For below-the-fold content only: it server-renders hidden, so above-the-fold
+ * content should use the CSS `animate-rise` entrance instead. `data-reveal`
+ * lets globals.css show it anyway when JavaScript is off or fails.
+ */
 export function Reveal({ delay = 0, className, children }: { delay?: number; className?: string; children: ReactNode }) {
   return (
     <motion.div
+      data-reveal
       className={className}
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -41,7 +51,7 @@ export function Stagger({ as = "div", className, children }: { as?: "div" | "ol"
 
 export function StaggerItem({ as = "div", ...props }: { as?: "div" | "li" } & HTMLMotionProps<"div">) {
   const Tag = motion[as] as typeof motion.div;
-  return <Tag variants={item} {...props} />;
+  return <Tag data-reveal variants={item} {...props} />;
 }
 
 /** A card that lifts slightly under the pointer. */

@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { publicOrigin } from "@/lib/origin";
+import { restoreDemoAgent } from "@/lib/demo-agent";
+import { internalOrigin } from "@/lib/origin";
 import { acquireLock, rateLimit, releaseLock } from "@/lib/rate-limit";
+import { publicErrorMessage } from "@/lib/safe-error";
 import { runResearchAgent, type AgentEvent } from "@/lib/ai/research-agent";
+import { findAgentByKey } from "@/lib/tollgate/service";
 
 const Body = z.object({
   task: z.string().trim().min(5).max(500),
@@ -31,10 +34,11 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const emit = (event: AgentEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       try {
-        await runResearchAgent({ ...parsed.data, origin: publicOrigin(req), agentKey, emit });
+        await restoreDemoAgent(await findAgentByKey(agentKey));
+        await runResearchAgent({ ...parsed.data, origin: internalOrigin(), agentKey, emit });
       } catch (err) {
         console.error("agent run failed", err);
-        emit({ type: "error", message: err instanceof Error ? err.message : "Agent run failed." });
+        emit({ type: "error", message: publicErrorMessage(err, "Agent run failed. Try again in a moment.") });
       } finally {
         await releaseLock("agent-run");
         controller.close();

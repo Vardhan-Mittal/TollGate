@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { assessPayment, recordRisk } from "@/lib/guardian";
+import { assessPayment, recordRisk, type Assessment } from "@/lib/guardian";
+import { SIMULATION_AGENT_ID } from "@/lib/guardian-simulation";
 import { centsToMoney } from "@/lib/money";
 import { hashAgentKey } from "./keys";
 import {
@@ -35,6 +36,8 @@ export const accounts = {
   agent: (id: string) => `agent:${id}`,
   publisher: (id: string) => `publisher:${id}`,
   platform: "platform",
+  /** Where the runaway-agent simulation's test-credit purchases land; not a real publisher. */
+  simulation: "publisher:simulation",
 };
 
 export type GateQuote =
@@ -111,6 +114,11 @@ export async function reissueAccess(opts: { agentKey: string; path: string; lice
   return { accessToken, boughtAt: grant.createdAt, priceCents: grant.priceCents };
 }
 
+type PayOutcome =
+  | { kind: "paid"; grantId: string; balanceCents: number }
+  | { kind: "frozen"; reason: string | null }
+  | { kind: "held"; risk: Assessment; eventId: string };
+
 function startOfUtcDay() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -132,115 +140,152 @@ export async function payQuote(opts: { agentKey: string; quoteId: string; origin
 
   const price = quote.priceCents;
   const reviewUrl = `${opts.origin}/wallet`;
-
-  // Spend Guardian: a frozen wallet pays nothing until its owner reviews it,
-  // and every payment is risk-scored against the agent's own history first.
-  if (agent.frozenAt) {
-    throw new TollgateError(423, "wallet_frozen", `Spend Guardian froze this wallet: ${agent.frozenReason ?? "unusual activity"}`, {
-      review_url: reviewUrl,
-    });
-  }
-  const risk = await assessPayment({ agentId: agent.id, resourceId: quote.resourceId, priceCents: price });
-  if (risk.decision !== "ALLOW") {
-    const event = await recordRisk(agent.id, risk, { resourceId: quote.resourceId, priceCents: price });
-    if (risk.decision === "HOLD") {
-      throw new TollgateError(423, "payment_held", "Spend Guardian held this payment and froze the wallet for review.", {
-        risk_score: risk.score,
-        signals: risk.signals.map((s) => s.reason),
-        risk_event_id: event.id,
-        review_url: reviewUrl,
-      });
-    }
-  }
-
-  if (agent.dailyBudgetCents != null) {
-    const spent = await prisma.ledgerEntry.aggregate({
-      _sum: { amountCents: true },
-      where: { account: accounts.agent(agent.id), kind: "CHARGE", createdAt: { gte: startOfUtcDay() } },
-    });
-    const spentCents = -(spent._sum.amountCents ?? 0);
-    if (spentCents + price > agent.dailyBudgetCents) {
-      throw new TollgateError(402, "daily_budget_exceeded", "This payment would exceed the agent's daily budget.", {
-        daily_budget: centsToMoney(agent.dailyBudgetCents),
-        spent_today: centsToMoney(spentCents),
-      });
-    }
-  }
-
   const fee = Math.floor((price * PLATFORM_FEE_BPS) / 10_000);
   const net = price - fee;
   const now = new Date();
+  // The runaway-agent simulation pays with test credit: its purchases go to a
+  // separate ledger account and never reach a real publisher's balance.
+  const simulated = agent.id === SIMULATION_AGENT_ID;
+  const payment = { resourceId: quote.resourceId, priceCents: price };
+  let flagged: Assessment | null = null;
 
-  // Everything below commits together or not at all. Two concurrency guards:
-  // storing the quote under its signed id means a second payment of the same
-  // quote violates the primary key, and the conditional wallet update means a
-  // balance can never go below zero.
-  const { grant, balanceCents } = await prisma
-    .$transaction(async (tx) => {
-      await tx.quote.create({
-        data: {
-          id: quote.quoteId,
-          resourceId: quote.resourceId,
-          license: toDbLicense(quote.license),
-          priceCents: price,
-          botName: quote.botName,
-          status: "PAID",
-          paidAt: now,
-          agentId: agent.id,
-          expiresAt: verified.expiresAt,
+  // Everything below commits together or not at all. Concurrency guards:
+  // - an advisory lock serialises payments per agent, so the frozen flag, the
+  //   Spend Guardian and the daily budget each see every earlier payment;
+  // - storing the quote under its signed id means a second payment of the
+  //   same quote violates the primary key;
+  // - the conditional wallet update means a balance can never go below zero.
+  let outcome: PayOutcome;
+  try {
+    outcome = await prisma
+      .$transaction(
+        async (tx): Promise<PayOutcome> => {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${agent.id}::text))`;
+
+          // Spend Guardian: a frozen wallet pays nothing until its owner reviews it,
+          // and every payment is risk-scored against the agent's own history first.
+          const current = await tx.agent.findUniqueOrThrow({
+            where: { id: agent.id },
+            select: { frozenAt: true, frozenReason: true, dailyBudgetCents: true, balanceCents: true },
+          });
+          if (current.frozenAt) return { kind: "frozen", reason: current.frozenReason };
+
+          const risk = await assessPayment({ agentId: agent.id, resourceId: quote.resourceId, priceCents: price, now }, tx);
+          if (risk.decision === "HOLD") {
+            // Committed together with the freeze; turned into a 423 below.
+            const event = await recordRisk(agent.id, risk, payment, tx);
+            return { kind: "held", risk, eventId: event.id };
+          }
+          if (risk.decision === "FLAG") flagged = risk;
+
+          if (current.dailyBudgetCents != null) {
+            const spent = await tx.ledgerEntry.aggregate({
+              _sum: { amountCents: true },
+              where: { account: accounts.agent(agent.id), kind: "CHARGE", createdAt: { gte: startOfUtcDay() } },
+            });
+            const spentCents = -(spent._sum.amountCents ?? 0);
+            if (spentCents + price > current.dailyBudgetCents) {
+              throw new TollgateError(402, "daily_budget_exceeded", "This payment would exceed the agent's daily budget.", {
+                daily_budget: centsToMoney(current.dailyBudgetCents),
+                spent_today: centsToMoney(spentCents),
+              });
+            }
+          }
+
+          await tx.quote.create({
+            data: {
+              id: quote.quoteId,
+              resourceId: quote.resourceId,
+              license: toDbLicense(quote.license),
+              priceCents: price,
+              botName: quote.botName,
+              status: "PAID",
+              paidAt: now,
+              agentId: agent.id,
+              expiresAt: verified.expiresAt,
+            },
+          });
+
+          const debited = await tx.agent.updateMany({
+            where: { id: agent.id, balanceCents: { gte: price } },
+            data: { balanceCents: { decrement: price } },
+          });
+          if (debited.count === 0) {
+            throw new TollgateError(402, "insufficient_funds", "Wallet balance is too low. Top up with PayPal.", {
+              balance: centsToMoney(current.balanceCents),
+              price: centsToMoney(price),
+              topup_url: `${opts.origin}/wallet`,
+            });
+          }
+
+          if (simulated) {
+            await tx.ledgerEntry.createMany({
+              data: [
+                { account: accounts.agent(agent.id), kind: "CHARGE", amountCents: -price, quoteId: quote.quoteId },
+                { account: accounts.simulation, kind: "EARNING", amountCents: price, quoteId: quote.quoteId },
+              ],
+            });
+          } else {
+            await tx.publisher.update({
+              where: { id: resource.publisherId },
+              data: { balanceCents: { increment: net } },
+            });
+            await tx.ledgerEntry.createMany({
+              data: [
+                { account: accounts.agent(agent.id), kind: "CHARGE", amountCents: -price, quoteId: quote.quoteId },
+                { account: accounts.publisher(resource.publisherId), kind: "EARNING", amountCents: net, quoteId: quote.quoteId },
+                { account: accounts.platform, kind: "FEE", amountCents: fee, quoteId: quote.quoteId },
+              ],
+            });
+          }
+
+          const grant = await tx.accessGrant.create({
+            data: {
+              quoteId: quote.quoteId,
+              agentId: agent.id,
+              resourceId: quote.resourceId,
+              license: toDbLicense(quote.license),
+              priceCents: price,
+            },
+          });
+
+          const after = await tx.agent.findUniqueOrThrow({ where: { id: agent.id }, select: { balanceCents: true } });
+          return { kind: "paid", grantId: grant.id, balanceCents: after.balanceCents };
         },
+        // Payments of one agent queue on the lock, so allow more than the 5 s default.
+        { maxWait: 10_000, timeout: 15_000 },
+      )
+      .catch((err) => {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          throw new TollgateError(409, "quote_already_paid", "This quote was already paid.");
+        }
+        throw err;
       });
+  } finally {
+    // A flag is kept whether or not the payment then went through.
+    const flag = flagged as Assessment | null;
+    if (flag) await recordRisk(agent.id, flag, payment).catch((err) => console.error("recording risk flag failed", err));
+  }
 
-      const debited = await tx.agent.updateMany({
-        where: { id: agent.id, balanceCents: { gte: price } },
-        data: { balanceCents: { decrement: price } },
-      });
-      if (debited.count === 0) {
-        throw new TollgateError(402, "insufficient_funds", "Wallet balance is too low. Top up with PayPal.", {
-          balance: centsToMoney(agent.balanceCents),
-          price: centsToMoney(price),
-          topup_url: `${opts.origin}/wallet`,
-        });
-      }
-
-      await tx.publisher.update({
-        where: { id: resource.publisherId },
-        data: { balanceCents: { increment: net } },
-      });
-
-      await tx.ledgerEntry.createMany({
-        data: [
-          { account: accounts.agent(agent.id), kind: "CHARGE", amountCents: -price, quoteId: quote.quoteId },
-          { account: accounts.publisher(resource.publisherId), kind: "EARNING", amountCents: net, quoteId: quote.quoteId },
-          { account: accounts.platform, kind: "FEE", amountCents: fee, quoteId: quote.quoteId },
-        ],
-      });
-
-      const grant = await tx.accessGrant.create({
-        data: {
-          quoteId: quote.quoteId,
-          agentId: agent.id,
-          resourceId: quote.resourceId,
-          license: toDbLicense(quote.license),
-          priceCents: price,
-        },
-      });
-
-      const after = await tx.agent.findUniqueOrThrow({ where: { id: agent.id }, select: { balanceCents: true } });
-      return { grant, balanceCents: after.balanceCents };
-    })
-    .catch((err) => {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new TollgateError(409, "quote_already_paid", "This quote was already paid.");
-      }
-      throw err;
+  if (outcome.kind === "frozen") {
+    throw new TollgateError(423, "wallet_frozen", `Spend Guardian froze this wallet: ${outcome.reason ?? "unusual activity"}`, {
+      review_url: reviewUrl,
     });
+  }
+  if (outcome.kind === "held") {
+    throw new TollgateError(423, "payment_held", "Spend Guardian held this payment and froze the wallet for review.", {
+      risk_score: outcome.risk.score,
+      signals: outcome.risk.signals.map((s) => s.reason),
+      risk_event_id: outcome.eventId,
+      review_url: reviewUrl,
+    });
+  }
 
   const license = quote.license;
   const accessToken = await signAccessToken({
     resource: quote.resource,
     license,
-    grantId: grant.id,
+    grantId: outcome.grantId,
     agentId: agent.id,
   });
 
@@ -251,7 +296,7 @@ export async function payQuote(opts: { agentKey: string; quoteId: string; origin
     resource: quote.resource,
     license,
     charged: centsToMoney(price),
-    balance: centsToMoney(balanceCents),
+    balance: centsToMoney(outcome.balanceCents),
   };
 }
 

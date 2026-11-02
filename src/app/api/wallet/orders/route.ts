@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { DEMO_MODE } from "@/lib/demo";
 import { publicOrigin } from "@/lib/origin";
 import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse } from "@/lib/http";
@@ -23,7 +25,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { orderId } = await startTopUp({ ...parsed.data, origin: publicOrigin(req) });
+    let { save } = parsed.data;
+    if (DEMO_MODE && save) {
+      // A saved PayPal (e.g. the shared demo wallet's) cannot be swapped for a visitor's own account.
+      const agent = await prisma.agent.findUnique({ where: { id: parsed.data.agentId }, select: { paypalVaultId: true } });
+      if (agent?.paypalVaultId) save = false;
+    }
+    const { orderId } = await startTopUp({ ...parsed.data, save, origin: publicOrigin(req) });
     return NextResponse.json({ orderId });
   } catch (err) {
     return errorResponse(err);

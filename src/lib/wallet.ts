@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE } from "@/lib/demo";
 import { PayPalError } from "@/lib/paypal/client";
 import {
   captureOrder,
@@ -9,6 +10,7 @@ import {
   valueToCents,
   type PayPalOrder,
 } from "@/lib/paypal/orders";
+import { acquireLock, releaseLock } from "@/lib/rate-limit";
 import { TollgateError, accounts } from "@/lib/tollgate/service";
 
 export const TOP_UP_MIN_CENTS = 100;
@@ -94,13 +96,16 @@ export async function creditCapture(opts: {
     });
     if (claimed.count === 0) return { credited: false, alreadyCompleted: true, topUpId: opts.topUpId };
 
-    const topUp = await tx.topUp.findUniqueOrThrow({ where: { id: opts.topUpId } });
+    const topUp = await tx.topUp.findUniqueOrThrow({ where: { id: opts.topUpId }, include: { agent: true } });
+    // The public demo's shared agent keeps the PayPal account it was set up
+    // with: a visitor's "save PayPal" top-up must not replace it.
+    const keepSaved = DEMO_MODE && topUp.agent.paypalVaultId != null;
     await tx.agent.update({
       where: { id: topUp.agentId },
       data: {
         balanceCents: { increment: opts.amountCents },
-        ...(opts.vaultId ? { paypalVaultId: opts.vaultId } : {}),
-        ...(opts.customerId ? { paypalCustomerId: opts.customerId } : {}),
+        ...(opts.vaultId && !keepSaved ? { paypalVaultId: opts.vaultId } : {}),
+        ...(opts.customerId && !keepSaved ? { paypalCustomerId: opts.customerId } : {}),
       },
     });
     await tx.ledgerEntry.create({
@@ -127,15 +132,23 @@ export async function autoRecharge(agentId: string, opts: { force?: boolean } = 
   if (agent.frozenAt) return null;
   if (!opts.force && agent.balanceCents >= agent.autoRechargeThresholdCents) return null;
 
-  // Don't stack recharges: skip if one started in the last minute.
-  const recent = await prisma.topUp.findFirst({
-    where: { agentId, automatic: true, createdAt: { gte: new Date(Date.now() - 60_000) } },
-  });
-  if (recent) return null;
-
-  const topUp = await prisma.topUp.create({
-    data: { agentId, amountCents: agent.autoRechargeAmountCents, automatic: true },
-  });
+  // Don't stack recharges: skip if one started in the last minute. The lock
+  // makes the check and the create atomic, so two concurrent calls (the
+  // after() refill and an insufficient-funds retry) cannot both charge PayPal.
+  const lock = `recharge:${agentId}`;
+  if (!(await acquireLock(lock, 60_000))) return null;
+  let topUp;
+  try {
+    const recent = await prisma.topUp.findFirst({
+      where: { agentId, automatic: true, createdAt: { gte: new Date(Date.now() - 60_000) } },
+    });
+    if (recent) return null;
+    topUp = await prisma.topUp.create({
+      data: { agentId, amountCents: agent.autoRechargeAmountCents, automatic: true },
+    });
+  } finally {
+    await releaseLock(lock);
+  }
 
   try {
     let order = await chargeVaultedPayPal({

@@ -1,13 +1,19 @@
 "use server";
 
 import { z } from "zod";
+import { limitAction } from "@/lib/action-limit";
 import { PRICE_LIMITS } from "@/lib/ai/pricing";
 import { prisma } from "@/lib/db";
+import { DEMO_MODE } from "@/lib/demo";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
 import { invalidateResourceCache } from "@/lib/tollgate/resource-cache";
 
 export type PriceRowUpdate = { readCents: number; trainCents: number; overridden: boolean };
 type Result = { ok: true; row: PriceRowUpdate } | { ok: false; error: string };
+
+// The public dashboard has no sign-in: keep every article paid so the demo flows keep working.
+const MIN_CENTS = DEMO_MODE ? 1 : 0;
+const limitPriceEdits = () => limitAction("price-edit", 30, 10 * 60_000);
 
 const Input = z.object({
   resourceId: z.string().min(1),
@@ -22,7 +28,12 @@ export async function setPrice(input: z.infer<typeof Input>): Promise<Result> {
   const { resourceId, field, cents } = parsed.data;
 
   const max = field === "read" ? PRICE_LIMITS.readMaxCents : PRICE_LIMITS.trainMaxCents;
-  if (cents < 0 || cents > max) return { ok: false, error: `${field === "read" ? "Read" : "Train"} price must be 0–${max}¢ (0 = free).` };
+  if (cents < MIN_CENTS || cents > max) {
+    const label = field === "read" ? "Read" : "Train";
+    return { ok: false, error: DEMO_MODE ? `${label} price must be 1–${max}¢ in the public demo.` : `${label} price must be 0–${max}¢ (0 = free).` };
+  }
+  const limited = await limitPriceEdits();
+  if (limited) return { ok: false, error: limited };
 
   const resource = await prisma.resource.findFirst({ where: { id: resourceId, publisherId: DEMO_PUBLISHER_ID } });
   if (!resource) return { ok: false, error: "Article not found." };
@@ -37,6 +48,8 @@ export async function setPrice(input: z.infer<typeof Input>): Promise<Result> {
 
 /** Hands pricing back to the AI's latest suggestion. */
 export async function resetToAiPrice(resourceId: string): Promise<Result> {
+  const limited = await limitPriceEdits();
+  if (limited) return { ok: false, error: limited };
   const resource = await prisma.resource.findFirst({ where: { id: resourceId, publisherId: DEMO_PUBLISHER_ID } });
   if (!resource) return { ok: false, error: "Article not found." };
   if (resource.aiPriceReadCents == null || resource.aiPriceTrainCents == null) {

@@ -15,6 +15,8 @@ async function redis(commands: (string | number)[][]): Promise<{ result: unknown
       headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify(commands),
       cache: "no-store",
+      // A slow Redis should fall back to memory quickly, not stall the request.
+      signal: AbortSignal.timeout(2_000),
     });
     if (!res.ok) throw new Error(`Upstash responded ${res.status}`);
     return await res.json();
@@ -25,18 +27,40 @@ async function redis(commands: (string | number)[][]): Promise<{ result: unknown
   }
 }
 
+/**
+ * The caller's IP. Platform-set client-IP headers win. Otherwise use the RIGHTMOST
+ * X-Forwarded-For entry: that is the one our edge appended; anything to its left
+ * came from the caller and can be spoofed to get a fresh rate-limit bucket.
+ */
 export function clientIp(req: NextRequest) {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "local";
+  const platform = req.headers.get("true-client-ip") || req.headers.get("cf-connecting-ip");
+  if (platform?.trim()) return platform.trim();
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",").map((s) => s.trim()).filter(Boolean);
+  return forwarded?.at(-1) || req.headers.get("x-real-ip")?.trim() || "local";
 }
 
-const memoryHits = new Map<string, number[]>();
+const memoryHits = new Map<string, { hits: number[]; windowMs: number }>();
+let lastPrune = 0;
+
+// Drops callers whose newest hit has left its window, so the map can't grow forever.
+function pruneMemory(now: number) {
+  if (now - lastPrune < 60_000) return;
+  lastPrune = now;
+  for (const [key, entry] of memoryHits) {
+    if (now - (entry.hits.at(-1) ?? 0) >= entry.windowMs) memoryHits.delete(key);
+  }
+  for (const [name, heldUntil] of memoryLocks) {
+    if (heldUntil <= now) memoryLocks.delete(name);
+  }
+}
 
 function memoryLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
-  const recent = (memoryHits.get(key) ?? []).filter((t) => now - t < windowMs);
+  pruneMemory(now);
+  const recent = (memoryHits.get(key)?.hits ?? []).filter((t) => now - t < windowMs);
   if (recent.length >= limit) return { allowed: false, retryAfter: Math.ceil((windowMs - (now - recent[0])) / 1000) };
   recent.push(now);
-  memoryHits.set(key, recent);
+  memoryHits.set(key, { hits: recent, windowMs });
   return { allowed: true, retryAfter: 0 };
 }
 

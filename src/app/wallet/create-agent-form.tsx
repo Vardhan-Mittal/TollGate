@@ -12,11 +12,11 @@ export function CreateAgentForm() {
       <form action={action} className="mt-3 flex flex-wrap items-end gap-3">
         <label className="text-sm">
           <span className="block text-zinc-500">Name</span>
-          <input name="name" required placeholder="My research agent" className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 dark:border-zinc-700" />
+          <input name="name" required minLength={2} maxLength={40} placeholder="My research agent" className="mt-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 dark:border-zinc-700" />
         </label>
         <label className="text-sm">
           <span className="block text-zinc-500">Daily budget ($, optional)</span>
-          <input name="dailyBudget" type="number" min="0" step="0.5" placeholder="2.00" className="mt-1 w-32 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 dark:border-zinc-700" />
+          <input name="dailyBudget" type="number" min="0" max="1000" step="0.5" placeholder="2.00" className="mt-1 w-32 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 dark:border-zinc-700" />
         </label>
         <button disabled={pending} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900">
           {pending ? "Creating…" : "Create agent"}

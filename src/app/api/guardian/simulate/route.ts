@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/lib/db";
 import { prepareSimulationAgent } from "@/lib/guardian-simulation";
-import { publicOrigin } from "@/lib/origin";
+import { internalOrigin } from "@/lib/origin";
+import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
 import { acquireLock, rateLimit, releaseLock } from "@/lib/rate-limit";
+import { publicErrorMessage } from "@/lib/safe-error";
 import { TollgateClient } from "@/lib/tollgate/client";
 
 export type SimulationEvent =
@@ -10,9 +13,17 @@ export type SimulationEvent =
   | { type: "held"; agentId: string; eventId: string | null; score: number; signals: string[] }
   | { type: "done"; message: string };
 
-// The cheapest gated article, bought again and again like an agent stuck in a loop.
-const LOOP_PATH = "/blog/ten-tips-ev-battery-life";
 const MAX_ATTEMPTS = 12;
+
+// The cheapest paid article right now, bought again and again like an agent
+// stuck in a loop. Picked per run because visitors can change prices.
+async function cheapestPaidArticle() {
+  return prisma.resource.findFirst({
+    where: { publisherId: DEMO_PUBLISHER_ID, priceReadCents: { gt: 0 } },
+    orderBy: [{ priceReadCents: "asc" }, { path: "asc" }],
+    select: { path: true },
+  });
+}
 
 // Simulates a runaway agent against the real payment API so the Spend
 // Guardian can be seen catching it. It pays from its own test wallet, so the
@@ -24,24 +35,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "busy", message: "A simulation is already running." }, { status: 429 });
   }
   let agent: Awaited<ReturnType<typeof prepareSimulationAgent>>;
+  let loopPath: string;
+  let origin: string;
   try {
+    const article = await cheapestPaidArticle();
+    if (!article) {
+      await releaseLock("guardian-sim");
+      return NextResponse.json(
+        { error: "no_paid_article", message: "Every article is free right now, so there is nothing to loop on. Set a read price on the dashboard and try again." },
+        { status: 409 },
+      );
+    }
+    loopPath = article.path;
+    origin = internalOrigin();
     agent = await prepareSimulationAgent();
   } catch (err) {
+    console.error("simulation setup failed", err);
     await releaseLock("guardian-sim");
-    throw err;
+    return NextResponse.json({ error: "simulation_failed", message: "Could not start the simulation. Try again in a moment." }, { status: 500 });
   }
   const agentKey = agent.key;
 
-  const client = new TollgateClient({ origin: publicOrigin(req), agentKey, userAgent: "RunawayAgent/0.1 (stuck in a loop)" });
+  const client = new TollgateClient({ origin, agentKey, userAgent: "RunawayAgent/0.1 (stuck in a loop)" });
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (e: SimulationEvent) => controller.enqueue(encoder.encode(JSON.stringify(e) + "\n"));
       try {
-        emit({ type: "start", agentId: agent.agentId, agent: agent.name, article: LOOP_PATH });
+        emit({ type: "start", agentId: agent.agentId, agent: agent.name, article: loopPath });
         for (let n = 1; n <= MAX_ATTEMPTS; n++) {
-          const page = await client.open(LOOP_PATH);
+          const page = await client.open(loopPath);
           if (page.kind !== "quote") {
             emit({ type: "attempt", n, outcome: "error", priceCents: 0, detail: "Expected a 402 quote." });
             break;
@@ -63,7 +87,8 @@ export async function POST(req: NextRequest) {
         }
         emit({ type: "done", message: "Simulation finished." });
       } catch (err) {
-        emit({ type: "done", message: err instanceof Error ? err.message : "Simulation failed." });
+        console.error("simulation failed", err);
+        emit({ type: "done", message: publicErrorMessage(err, "Simulation failed.") });
       } finally {
         await releaseLock("guardian-sim");
         controller.close();

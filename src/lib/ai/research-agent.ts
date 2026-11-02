@@ -138,22 +138,26 @@ export async function runResearchAgent(opts: {
         const quote = quotes.get(quote_id);
         if (!quote) return { status: "error", message: "Unknown quote_id. Open the source first." };
         if (quote.decided) return { status: "error", message: "You already decided on this quote." };
+        quote.decided = true;
 
-        // Budget guardrail enforced in code, not left to the model.
+        // Budget guardrail enforced in code, not left to the model. The model can
+        // call this tool several times in parallel, so the money is reserved
+        // before the first await and handed back only if the payment fails.
         if (spentCents + quote.priceCents > budgetCents) {
-          quote.decided = true;
           const why = `Would exceed the ${usd(budgetCents)} budget (${usd(spentCents)} already spent).`;
           emit({ type: "refused", path: quote.path, title: quote.title, priceCents: quote.priceCents, reason: why });
           return { status: "refused", message: why };
         }
+        spentCents += quote.priceCents;
 
+        // A thrown error leaves the reservation in place: the charge may have gone through.
         const payment = await client.pay(quote.token);
         if (!payment.ok) {
+          spentCents -= quote.priceCents;
+          quote.decided = false;
           emit({ type: "error", message: `Payment failed: ${payment.message}` });
           return { status: "error", message: payment.message };
         }
-        quote.decided = true;
-        spentCents += quote.priceCents;
 
         const page = await client.read(quote.path, payment.receipt.access_token);
         if (page.kind !== "content") return { status: "error", message: "Paid, but the content could not be read." };

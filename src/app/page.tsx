@@ -4,6 +4,7 @@ import { LiveBoard, LiveBoardSkeleton } from "@/components/live-board/live-board
 import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { PaymentFlow } from "@/components/payment-flow";
 import { prisma } from "@/lib/db";
+import { accounts } from "@/lib/tollgate/service";
 
 const IMPACT = [
   {
@@ -72,30 +73,27 @@ export default function Home() {
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/3 -z-10 h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl motion-safe:animate-[drift_14s_ease-in-out_infinite] dark:bg-emerald-500/15"
       />
-      <Reveal>
-        <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-emerald-600">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
-          Tollgate
-        </p>
-      </Reveal>
-      <Reveal delay={0.08}>
-        <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
-          AI agents pay <span className="font-serif text-[1.08em] font-normal italic text-emerald-600">the web they read.</span>
-        </h1>
-      </Reveal>
-      <Reveal delay={0.16}>
-        <p className="mt-6 max-w-2xl text-lg text-zinc-600 dark:text-zinc-400">
-          AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
-          402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
-          on PayPal.
-        </p>
-      </Reveal>
+      {/* The hero uses a CSS entrance, not <Reveal>: it must be visible on first paint, with or without JavaScript. */}
+      <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-widest text-emerald-600 motion-safe:animate-rise">
+        <span className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-[pulse-dot_1.6s_ease-out_infinite]" />
+        Tollgate
+      </p>
+      <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight [animation-delay:80ms] motion-safe:animate-rise sm:text-6xl">
+        AI agents pay{" "}
+        <span className="font-serif text-[1.08em] font-normal italic text-emerald-600 sm:block sm:whitespace-nowrap">the web they read.</span>
+      </h1>
+      <p className="mt-6 max-w-2xl text-lg text-zinc-600 [animation-delay:160ms] motion-safe:animate-rise dark:text-zinc-400">
+        AI crawlers and agents read millions of pages, and the people who wrote them get almost nothing back. Tollgate is an open HTTP
+        402 paywall for machines: creators set the rules, AI sets the price, agents decide what is worth buying, and everyone settles
+        on PayPal.
+      </p>
 
       <PaymentFlow />
 
-      <Stagger className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
-        {IMPACT.map((item) => (
-          <StaggerItem key={item.stat}>
+      {/* Near the fold on most screens, so these use the CSS entrance too. */}
+      <div className="mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
+        {IMPACT.map((item, i) => (
+          <div key={item.stat} style={{ animationDelay: `${520 + i * 90}ms` }} className="motion-safe:animate-rise">
             <Lift>
               <a
                 href={item.href}
@@ -108,9 +106,9 @@ export default function Home() {
                 <p className="mt-2 text-xs text-zinc-500">Source: {item.source} ↗</p>
               </a>
             </Lift>
-          </StaggerItem>
+          </div>
         ))}
-      </Stagger>
+      </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/live" className="rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white hover:bg-emerald-700">
@@ -222,12 +220,21 @@ Tollgate-Price: 0.24 USD
 }
 
 async function LiveStats() {
-  const [paidReads, quotes, paidOut, agents] = await Promise.all([
+  // A database hiccup shouldn't take down the first page a visitor sees.
+  const counts = await Promise.all([
     prisma.accessGrant.count(),
     prisma.botVisit.count({ where: { outcome: "QUOTED" } }),
-    prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { kind: "EARNING" } }),
+    // Real publishers only: the Guardian simulation books its test purchases to its own account.
+    prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { kind: "EARNING", account: { not: accounts.simulation } } }),
     prisma.agent.count(),
-  ]);
+  ]).catch((err) => {
+    console.error("live stats unavailable", err);
+    return null;
+  });
+  if (!counts) {
+    return <p className="mt-12 text-sm text-zinc-500">Live numbers are unavailable right now. The demos below still work.</p>;
+  }
+  const [paidReads, quotes, paidOut, agents] = counts;
 
   const stats = [
     { label: "paid AI reads", value: paidReads },

@@ -146,7 +146,7 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
         />
       </div>
       <p className={`mt-3 min-h-5 text-sm ${message ? (message.ok ? "text-emerald-600" : "text-red-600") : "text-zinc-500"}`}>
-        {message?.text ?? "Click a price marked ✎ to override it in cents. 0 makes an article free."}
+        {message?.text ?? "Click a price marked ✎ to override it in cents."}
       </p>
     </div>
   );
