@@ -33,14 +33,15 @@ export function PublisherFeed() {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
 
-    // Start with the last five minutes so the panel is not empty on arrival.
-    since.current ??= new Date(Date.now() - 5 * 60_000).toISOString();
-
     async function poll() {
       try {
-        const res = await fetch(`/api/live/feed?since=${encodeURIComponent(since.current ?? "")}`, { cache: "no-store" });
+        // The first request (no `since`) returns the latest activity, so the panel never opens empty;
+        // after that, only what happened since the server's previous clock reading.
+        const query = since.current ? `?since=${encodeURIComponent(since.current)}` : "";
+        const res = await fetch(`/api/live/feed${query}`, { cache: "no-store" });
         if (res.ok) {
           const next = (await res.json()) as LiveFeed;
+          since.current ??= next.now;
           const fresh = next.events.filter((e) => !seen.current.has(e.id));
           fresh.forEach((e) => seen.current.add(e.id));
           if (fresh.length) setEvents((prev) => [...fresh, ...prev].slice(0, 40));
@@ -100,13 +101,17 @@ export function PublisherFeed() {
                 <p className="font-medium">{e.title}</p>
                 <p className="truncate text-zinc-500">{e.detail}</p>
               </div>
-              <span
-                className={`shrink-0 font-mono text-[13px] tabular-nums ${
-                  e.kind === "earning" ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-zinc-500"
-                }`}
-              >
-                {style.sign}
-                {short(e.amountCents)}
+              <span className="flex shrink-0 flex-col items-end gap-0.5">
+                <span
+                  className={`font-mono text-[13px] tabular-nums ${
+                    e.kind === "earning" ? "font-semibold text-emerald-600 dark:text-emerald-400" : "text-zinc-500"
+                  }`}
+                >
+                  {style.sign}
+                  {short(e.amountCents)}
+                </span>
+                {/* Measured against the server's clock from the same response, so no hydration or clock skew. */}
+                {feed && <time dateTime={e.at} className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500">{ago(e.at, feed.now)}</time>}
               </span>
             </motion.div>
           );
@@ -115,6 +120,14 @@ export function PublisherFeed() {
       </div>
     </div>
   );
+}
+
+function ago(at: string, now: string) {
+  const s = Math.max(0, Math.round((Date.parse(now) - Date.parse(at)) / 1000));
+  if (s < 45) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86_400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86_400)}d ago`;
 }
 
 function Stat({ label, highlight = false, children }: { label: string; highlight?: boolean; children: React.ReactNode }) {

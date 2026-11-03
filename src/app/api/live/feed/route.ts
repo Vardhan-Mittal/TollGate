@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { SIMULATION_AGENT_ID } from "@/lib/guardian-simulation";
 import { DEMO_PUBLISHER_ID } from "@/lib/publisher";
+import { notTestTraffic } from "@/lib/test-traffic";
 import { PLATFORM_FEE_BPS } from "@/lib/tollgate/protocol";
 import { accounts } from "@/lib/tollgate/service";
 
@@ -20,12 +22,19 @@ export type LiveFeed = {
 };
 
 const MAX_LOOKBACK_MS = 60 * 60 * 1000;
+// With no `since`, the first request returns the latest activity however old it is,
+// so the panel never opens empty; later polls ask only for what is new.
+const INITIAL_LOOKBACK_MS = 30 * 86_400_000;
+const INITIAL_EVENTS = 8;
 
 // Publisher-side view for the /live page, read straight from the database so
 // it shows what the seller actually received, independently of the agent.
 export async function GET(req: NextRequest) {
   const sinceParam = Date.parse(req.nextUrl.searchParams.get("since") ?? "");
-  const since = new Date(Math.max(Number.isNaN(sinceParam) ? 0 : sinceParam, Date.now() - MAX_LOOKBACK_MS));
+  const initial = Number.isNaN(sinceParam);
+  const since = initial
+    ? new Date(Date.now() - INITIAL_LOOKBACK_MS)
+    : new Date(Math.max(sinceParam, Date.now() - MAX_LOOKBACK_MS));
   const dayStart = new Date(Date.now() - 86_400_000);
   const now = new Date();
 
@@ -38,13 +47,14 @@ export async function GET(req: NextRequest) {
     prisma.accessGrant.count({ where: { createdAt: { gte: dayStart }, resource: { publisherId: DEMO_PUBLISHER_ID } } }),
     // Unpaid 402s are recorded in the visit log; quotes are signed tokens.
     prisma.botVisit.findMany({
-      where: { outcome: "QUOTED", createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID } },
+      where: { outcome: "QUOTED", createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID }, ...notTestTraffic },
       include: { resource: true },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
     prisma.accessGrant.findMany({
-      where: { createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID } },
+      // The Guardian simulation's purchases never pay the publisher, so they are not publisher activity.
+      where: { createdAt: { gt: since }, resource: { publisherId: DEMO_PUBLISHER_ID }, agentId: { not: SIMULATION_AGENT_ID } },
       include: { resource: true, agent: true },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -109,7 +119,9 @@ export async function GET(req: NextRequest) {
       detail: `${d.agent.name} · ${d.resourceIds.length} articles`,
       amountCents: d.agreedPriceCents ?? 0,
     })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, initial ? INITIAL_EVENTS : undefined);
 
   const feed: LiveFeed = {
     now: now.toISOString(),
