@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.130",
+    "@ai-sdk/groq": "3.0.78",
     "@paypal/agent-toolkit": "^1.11.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",

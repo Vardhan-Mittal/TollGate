@@ -2,7 +2,7 @@ import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { TollgateClient } from "@/lib/tollgate/client";
 import { reissueAccess } from "@/lib/tollgate/service";
-import { AGENT_MODELS, withModelFallback } from "./models";
+import { AGENT_MODELS, modelLabel, withModelFallback } from "./models";
 
 export type AgentEvent =
   | { type: "start"; task: string; budgetCents: number }
@@ -203,10 +203,11 @@ export async function runResearchAgent(opts: {
 
   emit({ type: "start", task, budgetCents });
 
-  const text = await withModelFallback(AGENT_MODELS, async (model, modelId) => {
-    emit({ type: "model", modelId });
+  const text = await withModelFallback(AGENT_MODELS, async (model, modelId, signal) => {
+    emit({ type: "model", modelId: modelLabel(modelId) });
     const result = await generateText({
       model,
+      abortSignal: signal,
       system: systemPrompt(budgetCents),
       prompt: task,
       tools,
@@ -219,7 +220,7 @@ export async function runResearchAgent(opts: {
       },
     });
     return result.text;
-  });
+  }, { timeoutMs: 45_000 });
 
   emit({ type: "answer", text: text.trim(), sources, spentCents, budgetCents });
 }

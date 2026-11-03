@@ -49,9 +49,10 @@ function clamp(n: number, min: number, max: number) {
 export async function appraise(input: { title: string; body: string; publishedAt: Date }): Promise<AppraisalResult> {
   const ageDays = Math.max(0, Math.round((Date.now() - input.publishedAt.getTime()) / 86_400_000));
 
-  const { output, modelId } = await withModelFallback(PRICING_MODELS, async (model, modelId) => {
+  const { output, modelId } = await withModelFallback(PRICING_MODELS, async (model, modelId, signal) => {
     const result = await generateText({
       model,
+      abortSignal: signal,
       output: Output.object({ schema: Appraisal }),
       system: SYSTEM,
       prompt: `Title: ${input.title}\nPublished: ${ageDays} days ago\n\n${input.body}`,
@@ -59,7 +60,7 @@ export async function appraise(input: { title: string; body: string; publishedAt
       maxRetries: 1,
     });
     return { output: result.output, modelId };
-  });
+  }, { timeoutMs: 60_000 });
 
   // Smaller models sometimes ignore ranges; normalise rather than fail.
   const scores = {

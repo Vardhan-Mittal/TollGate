@@ -107,7 +107,7 @@ curl -i -A "GPTBot" http://localhost:3000/blog/q3-2026-battery-cell-price-survey
 | **Spend Guardian** (`src/lib/guardian.ts`) | Scores every agent payment against that agent's own history (repeat purchases, velocity, spend bursts, price outliers, unusual hours); the LLM writes the owner a plain-English fraud-alert note | High risk holds the payment and freezes the wallet (HTTP 423) and auto-recharge stops until a human unfreezes it; payments are checked one at a time per agent, so a burst of simultaneous payments cannot slip past |
 | **Finance assistant** (`src/lib/ai/finance-copilot.ts`) | Answers earnings questions, drafts and sends PayPal invoices (PayPal Agent Toolkit), cashes out via Payouts | Money-moving or sending actions need an explicit human "yes" |
 
-Models: Gemini via the Vercel AI SDK, with automatic fallback when a model is overloaded (`src/lib/ai/models.ts`).
+Models: Gemini via the Vercel AI SDK. Every AI call has a time limit; if Gemini is overloaded, rate-limited or too slow, it falls back to the next Gemini model and then to Groq (open-weight `gpt-oss-120b` / `gpt-oss-20b`), so a provider outage slows a demo down instead of breaking it (`src/lib/ai/models.ts`).
 
 ## Deploy on Render
 

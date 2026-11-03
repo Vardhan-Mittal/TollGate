@@ -196,9 +196,10 @@ export async function runFinanceCopilot(opts: { publisherId: string; messages: M
   const log = (a: CopilotAction) => actions.push(a);
   const tools = { ...(await paypalToolkitTools(confirmed, log)), ...tollgateTools(opts.publisherId, confirmed, log) };
 
-  const text = await withModelFallback(AGENT_MODELS, async (model) => {
+  const text = await withModelFallback(AGENT_MODELS, async (model, _modelId, signal) => {
     const result = await generateText({
       model,
+      abortSignal: signal,
       system: SYSTEM,
       messages: opts.messages,
       tools,
@@ -207,7 +208,7 @@ export async function runFinanceCopilot(opts: { publisherId: string; messages: M
       maxRetries: 1,
     });
     return result.text;
-  });
+  }, { timeoutMs: 40_000 });
 
   return { text: text.trim(), actions };
 }

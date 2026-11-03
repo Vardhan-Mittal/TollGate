@@ -13,7 +13,7 @@ const ASK = "ask";
 type AskState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "done"; answer: string; source: "ai" | "faq" }
+  | { status: "done"; answer: string; source: "ai" | "faq"; by: string }
   | { status: "error"; message: string };
 
 /** "Questions, answered.": a hairline accordion whose last row is a live question box answered by Gemini. */
@@ -56,7 +56,7 @@ export function Faq({ className = "" }: { className?: string }) {
         setAsk({ status: "error", message: typeof data?.message === "string" ? data.message : "Couldn't get an answer. Try again." });
         return;
       }
-      setAsk({ status: "done", answer: data.answer, source: data.source === "ai" ? "ai" : "faq" });
+      setAsk({ status: "done", answer: data.answer, source: data.source === "ai" ? "ai" : "faq", by: data.by === "Groq" ? "Groq" : "Gemini" });
     } catch {
       if (!ctrl.signal.aborted) setAsk({ status: "error", message: "Couldn't reach the assistant. Check your connection and try again." });
     }
@@ -156,14 +156,14 @@ export function Faq({ className = "" }: { className?: string }) {
                 {ask.status === "loading" && (
                   <p className="flex h-6 items-center gap-2 text-sm text-zinc-500">
                     <ThinkingOrb size={16} />
-                    Gemini is thinking…
+                    Thinking…
                   </p>
                 )}
                 {ask.status === "done" && (
                   <>
                     <p className="max-w-prose break-words text-zinc-600 dark:text-zinc-400">{ask.answer}</p>
                     <Footer onReset={reset}>
-                      {ask.source === "ai" ? "Answered by Gemini · grounded in Tollgate’s docs" : "Closest FAQ answer · Gemini unavailable"}
+                      {ask.source === "ai" ? `Answered by ${ask.by} · grounded in Tollgate’s docs` : "Closest FAQ answer · AI unavailable"}
                     </Footer>
                   </>
                 )}

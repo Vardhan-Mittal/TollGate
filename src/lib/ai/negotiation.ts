@@ -36,10 +36,22 @@ function historyText(history: Turn[]) {
 }
 
 async function decide(system: string, prompt: string): Promise<MoveT> {
-  return withModelFallback(AGENT_MODELS, async (model) => {
-    const { output } = await generateText({ model, output: Output.object({ schema: Move }), system, prompt, temperature: 0.4, maxRetries: 1 });
-    return output;
-  });
+  return withModelFallback(
+    AGENT_MODELS,
+    async (model, _modelId, signal) => {
+      const { output } = await generateText({
+        model,
+        abortSignal: signal,
+        output: Output.object({ schema: Move }),
+        system,
+        prompt,
+        temperature: 0.4,
+        maxRetries: 1,
+      });
+      return output;
+    },
+    { timeoutMs: 20_000 },
+  );
 }
 
 export async function runNegotiation(opts: { agentId: string; budgetCents: number; emit: (e: NegotiationEvent) => void }) {

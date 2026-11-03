@@ -145,9 +145,10 @@ export async function explainRiskEvent(eventId: string) {
   const event = await prisma.riskEvent.findUnique({ where: { id: eventId }, include: { agent: true } });
   if (!event || event.aiNote) return;
   try {
-    const text = await withModelFallback(AGENT_MODELS, async (model) => {
+    const text = await withModelFallback(AGENT_MODELS, async (model, _modelId, signal) => {
       const result = await generateText({
         model,
+        abortSignal: signal,
         temperature: 0.2,
         maxRetries: 1,
         system:
@@ -155,7 +156,7 @@ export async function explainRiskEvent(eventId: string) {
         prompt: `Agent: ${event.agent.name}. Decision: ${event.decision} (risk ${event.score}). Signals: ${event.summary}`,
       });
       return result.text.trim();
-    });
+    }, { timeoutMs: 15_000 });
     await prisma.riskEvent.update({ where: { id: eventId }, data: { aiNote: text.slice(0, 800) } });
   } catch (err) {
     console.error("risk explanation failed", err);
