@@ -4,6 +4,8 @@ import { LiveBoard, LiveBoardSkeleton } from "@/components/live-board/live-board
 import { GuardianSection } from "@/components/guardian-shield";
 import { FeatureGrid } from "@/components/landing/feature-grid";
 import { HowItWorks } from "@/components/landing/how-it-works";
+import { Faq } from "@/components/landing/faq";
+import { Gate3D } from "@/components/landing/gate-3d";
 import { PublisherCta } from "@/components/landing/publisher-cta";
 import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { PaymentFlow } from "@/components/payment-flow";
@@ -84,6 +86,7 @@ export default function Home() {
       </div>
 
       <div className="mx-auto max-w-3xl">
+        <Gate3D className="mt-6" label="Illustration: a toll gate that opens when a payment arrives" />
         <PaymentFlow />
       </div>
 
@@ -159,6 +162,8 @@ export default function Home() {
           Runs entirely on the PayPal sandbox: no real money moves. The demo publisher and its articles are fictional.
         </p>
       </section>
+
+      <Faq className="mt-24" />
     </main>
   );
 }
