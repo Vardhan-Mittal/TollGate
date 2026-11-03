@@ -78,7 +78,7 @@ function Shield({
         <path d={SHIELD} fill="none" stroke={`url(#${gradient})`} strokeWidth={2} />
       </svg>
       {front && (
-        <div className="absolute inset-x-0 bottom-[68px] hidden flex-col items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600 lg:flex dark:text-zinc-400">
+        <div className="absolute inset-x-0 bottom-[68px] flex flex-col items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-400">
           <span>risk 82%</span>
           <span className="h-px w-20 bg-zinc-900/10 dark:bg-white/15">
             <span className="block h-px w-[82%] bg-emerald-600" />

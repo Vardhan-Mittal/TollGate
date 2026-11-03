@@ -189,8 +189,14 @@ export function AnswerCard({ answer }: { answer: Answer }) {
   const paidCount = answer.sources.filter((s) => s.paid).length;
 
   return (
-    <section aria-labelledby="answer-heading" className="rounded-xl border-2 border-emerald-500/40 p-5">
-      <h2 id="answer-heading" className="font-semibold">Answer</h2>
+    <section
+      aria-labelledby="answer-heading"
+      className="rounded-2xl border border-emerald-500/30 bg-white/70 p-5 dark:border-emerald-400/20 dark:bg-white/[0.02]"
+    >
+      <h2 id="answer-heading" className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-400">
+        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        Answer
+      </h2>
       <div className="mt-3 space-y-2 text-[15px] leading-7 break-words">
         {lines.map((line, i) =>
           line.bullet ? (
@@ -204,7 +210,7 @@ export function AnswerCard({ answer }: { answer: Answer }) {
         )}
       </div>
 
-      <div className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
+      <div className="mt-4 border-t border-zinc-200 pt-3 text-sm dark:border-white/10">
         <p className="text-zinc-500">
           Paid {cents(answer.spentCents)} of a {cents(answer.budgetCents)} budget to {paidCount} publisher article
           {paidCount === 1 ? "" : "s"}, settled through the agent&apos;s PayPal-funded wallet.
@@ -227,8 +233,8 @@ export function AnswerCard({ answer }: { answer: Answer }) {
                       {...hoverProps(s.path)}
                       className={`flex min-w-0 max-w-full items-center gap-2 rounded-l-lg border py-1 pr-2 pl-2.5 text-left transition-[opacity,border-color,background-color] duration-150 ease-out motion-reduce:transition-none ${
                         active
-                          ? "border-zinc-400 bg-zinc-50 dark:border-zinc-500 dark:bg-zinc-900"
-                          : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
+                          ? "border-zinc-400 bg-zinc-50 dark:border-white/30 dark:bg-white/[0.06]"
+                          : "border-zinc-200 hover:border-zinc-300 dark:border-white/10 dark:hover:border-white/20"
                       } ${focus !== null && !active ? "opacity-50" : ""}`}
                     >
                       <span
@@ -245,7 +251,7 @@ export function AnswerCard({ answer }: { answer: Answer }) {
                       href={s.path}
                       aria-label={`Open ${s.title}`}
                       className={`-ml-px shrink-0 rounded-r-lg border px-2 py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 ${
-                        active ? "border-zinc-400 dark:border-zinc-500" : "border-zinc-200 dark:border-zinc-800"
+                        active ? "border-zinc-400 dark:border-white/30" : "border-zinc-200 dark:border-white/10"
                       }`}
                     >
                       <span aria-hidden>↗</span>

@@ -82,7 +82,7 @@ export function BudgetSlider({
     <div className={`group/budget text-sm ${disabled ? "opacity-50" : ""}`}>
       <div className="flex items-baseline justify-between gap-3">
         <span className="flex items-baseline gap-2">
-          <span id={`${uid}-label`} className="font-medium">
+          <span id={`${uid}-label`} className="font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">
             Budget
           </span>
           <span className="text-emerald-600 dark:text-emerald-400">{tier}</span>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { AnswerCard } from "@/components/answer-card";
 import { BudgetSlider } from "@/components/budget-slider";
+import { ui } from "@/components/ui/kit";
 import type { AgentEvent } from "@/lib/ai/research-agent";
 
 const PRESETS = [
@@ -13,6 +14,9 @@ const PRESETS = [
   { task: "Explain how LFP batteries work, for a complete beginner.", budgetCents: 10 },
 ];
 const BUDGETS = [10, 25, 30, 50, 100];
+
+// A selected chip swaps the outline for a filled pill (kept separate so the two colour sets never clash).
+const chip = (active: boolean) => (active ? `rounded-full border px-3 py-1 text-xs transition-colors ${ui.chipActive}` : ui.chip);
 
 const cents = (c: number) => (c < 100 ? `${c}¢` : `$${(c / 100).toFixed(2)}`);
 
@@ -63,16 +67,17 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
   const timeline = events.filter((e) => e.type !== "answer" && e.type !== "start");
 
   return (
-    <div className={layout === "split" ? "mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" : "space-y-5"}>
-      <form onSubmit={run} className="space-y-4 self-start rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <div className={layout === "split" ? "mt-10 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8" : "space-y-5"}>
+      {/* On /live the console already sits inside a card, so the form uses the quieter inset surface there. */}
+      <form onSubmit={run} className={`space-y-5 self-start ${layout === "split" ? `p-5 sm:p-6 ${ui.card}` : `p-4 sm:p-5 ${ui.inset}`}`}>
         <label className="block text-sm">
-          <span className="font-medium">Task</span>
+          <span className={ui.label}>Task</span>
           <textarea
             value={task}
             onChange={(e) => setTask(e.target.value)}
             rows={4}
             maxLength={500}
-            className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+            className={`mt-2 resize-y leading-6 ${ui.input}`}
           />
         </label>
         <div className="flex flex-wrap gap-2">
@@ -84,7 +89,7 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
                 setTask(p.task);
                 setBudgetCents(p.budgetCents);
               }}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-left text-xs text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+              className={`max-w-full text-left ${chip(task === p.task)}`}
             >
               {p.task.length > 48 ? `${p.task.slice(0, 48)}…` : p.task}
             </button>
@@ -93,14 +98,14 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
         <BudgetSlider value={budgetCents} steps={BUDGETS} onChange={setBudgetCents} disabled={running} />
         <button
           disabled={running || task.trim().length < 5}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-medium text-white disabled:opacity-50"
+          className={`w-full ${ui.btnAccent}`}
         >
           {running ? "Agent is working…" : "Run research agent"}
         </button>
         {(running || events.length > 0) && (
-          <div className="flex justify-between border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
-            <span className="text-zinc-500">Spent</span>
-            <span className="font-semibold tabular-nums">
+          <div className="flex items-baseline justify-between border-t border-zinc-200 pt-4 text-sm dark:border-white/10">
+            <span className={ui.label}>Spent</span>
+            <span className="font-mono font-medium tabular-nums">
               <motion.span key={spent} initial={{ scale: 1.3, opacity: 0.4 }} animate={{ scale: 1, opacity: 1 }} className="inline-block">
                 {cents(spent)}
               </motion.span>{" "}
@@ -112,7 +117,7 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
 
       <div className="min-w-0 space-y-3">
         {timeline.length === 0 && !running && (
-          <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-sm text-zinc-500 dark:border-zinc-700">
+          <p className="rounded-2xl border border-dashed border-zinc-200 p-6 text-sm text-pretty text-zinc-500 dark:border-white/10">
             The agent&apos;s decisions will appear here: every 402 quote it meets, and whether it paid or skipped, with its reason.
           </p>
         )}
@@ -161,23 +166,24 @@ function ThinkingDots() {
 
 function Row({ tone, label, children }: { tone: "zinc" | "amber" | "emerald" | "red" | "sky"; label: string; children: ReactNode }) {
   const tones = {
-    zinc: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-    amber: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-    emerald: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-    red: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
-    sky: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
+    // Same tints as the landing live board's chips.
+    zinc: "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-300",
+    amber: "bg-amber-500/12 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    emerald: "bg-emerald-500/12 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    red: "bg-red-500/12 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+    sky: "bg-sky-500/12 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
   };
   return (
-    <div className="flex gap-3 rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+    <div className="flex gap-3 rounded-xl border border-zinc-200 bg-white/70 p-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
       <motion.span
         initial={{ scale: 0.6 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 500, damping: 18 }}
-        className={`h-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tones[tone]}`}
+        className={`h-fit shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${tones[tone]}`}
       >
         {label}
       </motion.span>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 break-words">{children}</div>
     </div>
   );
 }

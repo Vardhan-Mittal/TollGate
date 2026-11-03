@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { GuardianShields } from "@/components/guardian-shield/shields";
+import { ui } from "@/components/ui/kit";
 
 const FACTS = [
   ["Scores every payment", "Each payment is weighed against the agent's own history: repeats, velocity, bursts, price outliers, odd hours."],
@@ -8,49 +9,49 @@ const FACTS = [
   ["Explains itself", "An LLM writes the owner a plain-English note on what looked wrong and why."],
 ] as const;
 
-/** Landing-page section for the Spend Guardian: a heading that passes behind frosted shields. */
+/** Landing-page section for the Spend Guardian: the copy on the left, layered glass shields in their own column. */
 export function GuardianSection() {
   return (
     <section id="guardian" aria-labelledby="guardian-heading" className="mt-16 overflow-x-clip">
       {/* No overflow-hidden here: a rounded overflow clip on an ancestor makes Chrome ignore the shields' clip-path. */}
-      <div className="relative rounded-2xl border border-zinc-200 bg-zinc-50 px-5 pb-8 pt-12 sm:px-10 sm:pb-10 sm:pt-16 dark:border-zinc-800 dark:bg-zinc-950">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-          {/* Texture for the glass to frost, fading out towards the edges. */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle,rgb(24_24_27/0.12)_1px,transparent_1px)] bg-size-[18px_18px] [mask-image:radial-gradient(ellipse_at_65%_30%,black,transparent_70%)] dark:bg-[radial-gradient(circle,rgb(255_255_255/0.1)_1px,transparent_1px)]" />
-          <div className="absolute -top-16 right-0 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl sm:right-24 lg:right-48 dark:bg-emerald-500/10" />
+      <div className={`relative px-5 pb-8 pt-10 sm:px-10 sm:pb-10 sm:pt-14 ${ui.card}`}>
+        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <p className={ui.label}>Spend Guardian</p>
+            <Reveal>
+              <h2 id="guardian-heading" className="mt-4 text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-balance sm:text-5xl lg:text-6xl">
+                <span className="text-sheen">Agents with wallets need a </span>
+                <span className="font-serif text-[1.08em] font-normal italic tracking-[-0.01em] text-emerald-600 dark:text-emerald-400">
+                  guardian.
+                </span>
+              </h2>
+            </Reveal>
+            <Reveal delay={0.05} className="mt-5 max-w-lg">
+              <p className={ui.muted}>
+                Like a card issuer&apos;s fraud check, every payment an agent makes is scored against its own habits. A runaway loop gets
+                stopped before it drains the wallet.
+              </p>
+            </Reveal>
+            <Link href="/live" className={`group mt-7 ${ui.btnSecondary}`}>
+              Try the runaway test <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span>
+            </Link>
+          </div>
+
+          {/* Its own column, so the glass only frosts the faint dot texture behind it, never the text. */}
+          <div aria-hidden className="relative hidden h-[330px] sm:block">
+            <div className="absolute inset-0 bg-[radial-gradient(circle,rgb(24_24_27/0.10)_1px,transparent_1px)] bg-size-[18px_18px] [mask-image:radial-gradient(ellipse_at_50%_45%,black,transparent_70%)] dark:bg-[radial-gradient(circle,rgb(255_255_255/0.08)_1px,transparent_1px)]" />
+            <GuardianShields className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-90" />
+          </div>
         </div>
 
-        <div className="relative">
-          <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">Spend Guardian</p>
-          <Reveal>
-            <h2 id="guardian-heading" className="mt-4 max-w-3xl text-[2.6rem] font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-              Agents with wallets need a{" "}
-              <span className="font-serif text-[1.08em] font-normal italic text-emerald-600">guardian.</span>
-            </h2>
-          </Reveal>
-          {/* After the heading in the DOM, so the glass paints over "wallets" and frosts it. */}
-          <GuardianShields className="pointer-events-none absolute -top-8 right-0 origin-top-right scale-[0.5] sm:-top-12 sm:right-2 sm:scale-75 lg:right-20 lg:scale-100" />
-        </div>
-
-        <Reveal delay={0.05} className="relative mt-6 max-w-md">
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Like a card issuer&apos;s fraud check, every payment an agent makes is scored against its own habits. A runaway loop gets
-            stopped before it drains the wallet.
-          </p>
-        </Reveal>
-
-        <Stagger as="dl" className="relative mt-10 grid gap-6 border-t border-zinc-200 pt-6 sm:grid-cols-3 dark:border-zinc-800">
+        <Stagger as="dl" className="mt-10 grid gap-6 border-t border-zinc-200 pt-6 sm:grid-cols-3 dark:border-white/10">
           {FACTS.map(([label, text]) => (
             <StaggerItem key={label}>
               <dt className="font-mono text-xs uppercase tracking-widest text-zinc-900 dark:text-zinc-100">{label}</dt>
-              <dd className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{text}</dd>
+              <dd className={`mt-2 text-sm ${ui.muted}`}>{text}</dd>
             </StaggerItem>
           ))}
         </Stagger>
-
-        <Link href="/live" className="group relative mt-8 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-500 dark:hover:text-emerald-400">
-          Try the runaway test <span aria-hidden className="inline-block transition-transform group-hover:translate-x-1">→</span>
-        </Link>
       </div>
     </section>
   );
