@@ -38,27 +38,40 @@ function isTimeoutOrNetwork(err: unknown): boolean {
   return false;
 }
 
+// A provider that just hung is skipped by every request for a while (per server instance),
+// so one slow outage costs one visitor a wait, not every visitor.
+const COOLDOWN_MS = 5 * 60_000;
+const coolingUntil = new Map<string, number>();
+const cooling = (provider: string) => (coolingUntil.get(provider) ?? 0) > Date.now();
+
 /**
  * Runs `fn` with the first usable model in `ids`. Each attempt gets its own time limit
  * (pass `signal` to the AI call as `abortSignal`). On overload, rate limit, timeout or a
- * network failure it moves to the next model; a provider that timed out is skipped for the
- * rest of the call, since a hang usually affects all its models at once.
+ * network failure it moves to the next model. A provider that timed out is skipped for the
+ * rest of the call, and by later calls for a few minutes, since a hang usually affects all
+ * its models at once. If every provider is cooling down, they are all tried anyway.
  */
 export async function withModelFallback<T>(
   ids: string[],
   fn: (model: LanguageModel, modelId: string, signal: AbortSignal) => Promise<T>,
   { timeoutMs = 45_000 }: { timeoutMs?: number } = {},
 ): Promise<T> {
+  const unique = [...new Set(ids)];
+  const healthy = unique.filter((id) => !cooling(providerOf(id)));
+  const order = healthy.length > 0 ? healthy : unique;
   const skip = new Set<string>();
   let lastError: unknown;
-  for (const id of new Set(ids)) {
+  for (const id of order) {
     if (skip.has(providerOf(id))) continue;
     try {
       return await fn(resolve(id), id, AbortSignal.timeout(timeoutMs));
     } catch (err) {
       const timedOut = isTimeoutOrNetwork(err);
       if (!timedOut && !isCapacityError(err)) throw err;
-      if (timedOut) skip.add(providerOf(id));
+      if (timedOut) {
+        skip.add(providerOf(id));
+        coolingUntil.set(providerOf(id), Date.now() + COOLDOWN_MS);
+      }
       console.warn(`model ${id} ${timedOut ? "timed out or unreachable" : "is overloaded"}, falling back`);
       lastError = err;
     }
