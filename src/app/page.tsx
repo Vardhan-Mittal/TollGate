@@ -9,6 +9,8 @@ import { Gate3D } from "@/components/landing/gate-3d";
 import { PublisherCta } from "@/components/landing/publisher-cta";
 import { CountUp, Lift, Reveal, Stagger, StaggerItem } from "@/components/motion";
 import { PaymentFlow } from "@/components/payment-flow";
+import { cacheLife } from "next/cache";
+import { SHOWCASE_CACHE } from "@/components/live-board/data";
 import { prisma } from "@/lib/db";
 import { accounts } from "@/lib/tollgate/service";
 
@@ -168,27 +170,35 @@ export default function Home() {
   );
 }
 
-async function LiveStats() {
-  // A database hiccup shouldn't take down the first page a visitor sees.
-  const counts = await Promise.all([
+/** The four headline counts, cached like the live board so most visitors never wait on the database. */
+async function getLiveStats() {
+  "use cache";
+  cacheLife(SHOWCASE_CACHE);
+  const [paidReads, quotes, earned, agents] = await Promise.all([
     prisma.accessGrant.count(),
     prisma.botVisit.count({ where: { outcome: "QUOTED" } }),
     // Real publishers only: the Guardian simulation books its test purchases to its own account.
     prisma.ledgerEntry.aggregate({ _sum: { amountCents: true }, where: { kind: "EARNING", account: { not: accounts.simulation } } }),
     prisma.agent.count(),
-  ]).catch((err) => {
+  ]);
+  return { paidReads, quotes, earnedCents: earned._sum.amountCents ?? 0, agents };
+}
+
+async function LiveStats() {
+  // A database hiccup shouldn't take down the first page a visitor sees.
+  const counts = await getLiveStats().catch((err) => {
     console.error("live stats unavailable", err);
     return null;
   });
   if (!counts) {
     return <p className="mt-12 text-sm text-zinc-500">Live numbers are unavailable right now. The demos below still work.</p>;
   }
-  const [paidReads, quotes, paidOut, agents] = counts;
+  const { paidReads, quotes, earnedCents, agents } = counts;
 
   const stats = [
     { label: "paid AI reads", value: paidReads },
     { label: "402 quotes issued", value: quotes },
-    { label: "earned by publishers", value: (paidOut._sum.amountCents ?? 0) / 100, prefix: "$", decimals: 2 },
+    { label: "earned by publishers", value: earnedCents / 100, prefix: "$", decimals: 2 },
     { label: "agents with wallets", value: agents },
   ];
 

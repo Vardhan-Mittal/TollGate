@@ -1,4 +1,5 @@
 import "server-only";
+import { cacheLife } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { SIMULATION_AGENT_ID } from "@/lib/guardian-simulation";
@@ -68,6 +69,9 @@ export type BoardData = {
   guardian: { rows: RiskRow[]; total: number; held: number; flagged: number; open: number };
 };
 
+/** Landing-page showcase data: refreshed in the background every 30 s, never older than 5 minutes. */
+export const SHOWCASE_CACHE = { stale: 30, revalidate: 30, expire: 300 };
+
 const LIMIT = 40;
 const SIDE_LIMIT = 20;
 const resource = { select: { title: true, path: true } } as const;
@@ -79,6 +83,9 @@ const notSimulation = notTestTraffic;
  * paid reads), AI pricing per article, agent-to-agent deals and Spend Guardian events.
  */
 export async function getBoardData(): Promise<BoardData> {
+  "use cache";
+  // Cheap to serve stale for a few seconds: one set of queries every ~30 s instead of one per visitor.
+  cacheLife(SHOWCASE_CACHE);
   const mine = { resource: { publisherId: DEMO_PUBLISHER_ID } };
   const dealsWhere = { publisherId: DEMO_PUBLISHER_ID };
   const [quoted, paid, earned, paidReads, quotes, pricing, dealRows, dealGroups, guardian] = await Promise.all([

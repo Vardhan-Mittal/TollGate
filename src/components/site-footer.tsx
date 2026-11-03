@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Aurora } from "@/components/aurora";
-import { DotWordmark } from "@/components/dot-wordmark";
+import { LazyAurora, LazyDotWordmark } from "@/components/footer-art";
 import { Lift, Reveal } from "@/components/motion";
 
 const REPO = "https://github.com/Vardhan-Mittal/TollGate";
@@ -18,7 +17,7 @@ export function SiteFooter() {
     <footer className="relative isolate mt-auto w-full overflow-hidden pt-28 sm:pt-40">
       {/* The aurora sits low, behind the wordmark, and melts away before it reaches the headline. */}
       <div className="absolute inset-x-0 top-0 bottom-14 -z-10 [mask-image:radial-gradient(ellipse_70%_55%_at_50%_78%,black_20%,transparent_100%)]">
-        <Aurora className="h-full w-full" />
+        <LazyAurora className="h-full w-full" />
       </div>
 
       <div className="mx-auto max-w-5xl px-4">
@@ -51,7 +50,7 @@ export function SiteFooter() {
         </Reveal>
 
         <Reveal delay={0.1} className="mt-16 sm:mt-24">
-          <DotWordmark />
+          <LazyDotWordmark />
         </Reveal>
       </div>
 
