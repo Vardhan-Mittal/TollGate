@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { AnswerCard } from "@/components/answer-card";
 import { BudgetSlider } from "@/components/budget-slider";
+import { ThinkingOrb } from "@/components/thinking-orb";
 import { ui } from "@/components/ui/kit";
 import type { AgentEvent } from "@/lib/ai/research-agent";
 
@@ -121,24 +122,45 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
             The agent&apos;s decisions will appear here: every 402 quote it meets, and whether it paid or skipped, with its reason.
           </p>
         )}
-        {timeline.map((e, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
-            <EventRow event={e} />
-          </motion.div>
-        ))}
-        <AnimatePresence>
-          {running && (
-            <motion.p
-              key="thinking"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-sm text-zinc-500"
-            >
-              <ThinkingDots /> Thinking
-            </motion.p>
-          )}
-        </AnimatePresence>
+        {/* A timeline: a rail that draws itself down to each new step, one dot per step, the orb at the end while working. */}
+        {(timeline.length > 0 || running) && (
+          <ol className="space-y-3">
+            {timeline.map((e, i) => (
+              <motion.li
+                key={i}
+                className="relative pl-7"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+              >
+                {(i < timeline.length - 1 || running) && (
+                  <motion.span
+                    aria-hidden
+                    className="absolute -bottom-3 left-[7px] top-5 w-px origin-top bg-zinc-200 dark:bg-white/10"
+                    initial={{ scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  />
+                )}
+                <span aria-hidden className={`absolute left-[3px] top-[15px] h-[9px] w-[9px] rounded-full ring-4 ring-background ${DOT[dotTone(e)]}`} />
+                <EventRow event={e} />
+              </motion.li>
+            ))}
+            <AnimatePresence>
+              {running && (
+                <motion.li
+                  key="thinking"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="relative flex items-center gap-2 pl-7 text-sm text-zinc-500"
+                >
+                  <ThinkingOrb size={17} className="absolute left-0 top-1/2 -translate-y-1/2" />
+                  Thinking
+                </motion.li>
+              )}
+            </AnimatePresence>
+          </ol>
+        )}
         {answer && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <AnswerCard answer={answer} />
@@ -149,19 +171,30 @@ export function AgentConsole({ layout = "split" }: { layout?: "split" | "stacked
   );
 }
 
-function ThinkingDots() {
-  return (
-    <span className="flex gap-1">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-          animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-        />
-      ))}
-    </span>
-  );
+// Timeline dot colour per step: money moved (emerald), price quoted (amber), stopped (red), other (zinc/sky).
+const DOT = {
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
+  sky: "bg-sky-500",
+  zinc: "bg-zinc-300 dark:bg-zinc-600",
+};
+
+function dotTone(e: AgentEvent): keyof typeof DOT {
+  switch (e.type) {
+    case "paid":
+      return "emerald";
+    case "quote":
+      return "amber";
+    case "refused":
+    case "error":
+      return "red";
+    case "owned":
+    case "thought":
+      return "sky";
+    default:
+      return "zinc";
+  }
 }
 
 function Row({ tone, label, children }: { tone: "zinc" | "amber" | "emerald" | "red" | "sky"; label: string; children: ReactNode }) {

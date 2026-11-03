@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Reveal } from "@/components/motion";
+import { ThinkingOrb } from "@/components/thinking-orb";
 import { FAQ_ITEMS } from "@/lib/ai/faq-facts";
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
@@ -153,9 +154,9 @@ export function Faq({ className = "" }: { className?: string }) {
             <Panel id={askPanel} label="Answer" open={open === ASK}>
               <div role="status" aria-live="polite" className="pb-6 pr-2 sm:pr-10">
                 {ask.status === "loading" && (
-                  <p className="flex h-6 items-center">
-                    <Dots />
-                    <span className="sr-only">Answering…</span>
+                  <p className="flex h-6 items-center gap-2 text-sm text-zinc-500">
+                    <ThinkingOrb size={16} />
+                    Gemini is thinking…
                   </p>
                 )}
                 {ask.status === "done" && (
@@ -236,17 +237,3 @@ function Footer({ onReset, children }: { onReset: () => void; children: ReactNod
   );
 }
 
-function Dots() {
-  return (
-    <span aria-hidden className="inline-flex gap-1">
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="size-1.5 rounded-full bg-emerald-500"
-          animate={{ opacity: [0.25, 1, 0.25] }}
-          transition={{ duration: 1, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-        />
-      ))}
-    </span>
-  );
-}

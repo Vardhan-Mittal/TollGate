@@ -58,6 +58,19 @@ body {
   }
 }
 
+/* The ThinkingOrb's core, breathing in and out. */
+@keyframes orb-breathe {
+  0%,
+  100% {
+    transform: scale(0.78);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+}
+
 /* The live dot next to "Live" badges. */
 @keyframes pulse-dot {
   0% {

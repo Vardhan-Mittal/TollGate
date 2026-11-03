@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CountUp } from "@/components/motion";
+import { ThinkingOrb } from "@/components/thinking-orb";
 import { ui } from "@/components/ui/kit";
 import type { NegotiationEvent } from "@/lib/ai/negotiation";
 
@@ -160,7 +161,11 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
             </div>
           );
         })}
-        {running && <p className="animate-pulse text-center text-sm text-zinc-500">Waiting for the next move…</p>}
+        {running && (
+          <p className="flex items-center justify-center gap-2 text-sm text-zinc-500">
+            <ThinkingOrb size={16} /> Waiting for the next move…
+          </p>
+        )}
       </div>
 
       {agreed && (
@@ -206,7 +211,9 @@ export function NegotiationConsole({ listPriceCents }: { listPriceCents: number 
               )}
             </div>
           ) : (
-            <p className="mt-3 animate-pulse text-sm text-zinc-500">Publisher&apos;s agent is issuing a PayPal invoice…</p>
+            <p className="mt-3 flex items-center gap-2 text-sm text-zinc-500">
+              <ThinkingOrb size={16} /> Publisher&apos;s agent is issuing a PayPal invoice…
+            </p>
           )}
         </motion.section>
       )}
