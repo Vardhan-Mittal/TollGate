@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { ui } from "@/components/ui/kit";
 import type { PayPalOneTimeSession, PayPalSdkInstance } from "@/types/paypal-sdk";
 
 const SDK_URL = process.env.NEXT_PUBLIC_PAYPAL_SDK_URL ?? "https://www.sandbox.paypal.com/web-sdk/v6/core";
@@ -104,17 +105,18 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Top-up amount">
         {AMOUNTS.map((cents) => (
           <button
             key={cents}
             type="button"
             onClick={() => setAmountCents(cents)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+            aria-pressed={amountCents === cents}
+            className={`rounded-full border px-4 py-1.5 font-mono text-sm tabular-nums transition-colors ${
               amountCents === cents
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                : "border-zinc-300 dark:border-zinc-700"
+                ? ui.chipActive
+                : "border-zinc-200 text-zinc-700 hover:border-zinc-300 dark:border-white/10 dark:text-zinc-300 dark:hover:border-white/20"
             }`}
           >
             ${cents / 100}
@@ -122,11 +124,11 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
         ))}
       </div>
 
-      <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-        <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="mt-1" />
+      <label className={`flex items-start gap-2.5 text-sm ${ui.muted}`}>
+        <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} className="mt-1 accent-emerald-600" />
         <span>
           Save my PayPal for auto-recharge
-          <span className="block text-xs text-zinc-500">Lets Tollgate refill this wallet when it runs low, within the limits you set.</span>
+          <span className="mt-0.5 block text-xs text-pretty text-zinc-500">Lets Tollgate refill this wallet when it runs low, within the limits you set.</span>
         </span>
       </label>
 
@@ -134,7 +136,7 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
         {sdk ? (
           <paypal-button type="pay" class="paypal-gold"></paypal-button>
         ) : (
-          <div className="h-11 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+          <div className="h-11 animate-pulse rounded-full bg-zinc-200 dark:bg-white/[0.06]" />
         )}
       </div>
 
@@ -142,7 +144,11 @@ export function PayPalTopUp({ agentId, hasSavedPayPal }: { agentId: string; hasS
         <p
           role="status"
           className={`text-sm ${
-            status.kind === "error" ? "text-red-600" : status.kind === "done" ? "text-emerald-600" : "text-zinc-500"
+            status.kind === "error"
+              ? "text-red-600 dark:text-red-400"
+              : status.kind === "done"
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-zinc-500"
           }`}
         >
           {status.message}

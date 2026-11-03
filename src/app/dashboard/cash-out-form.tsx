@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ui } from "@/components/ui/kit";
 
 export function CashOutForm({
   defaultEmail,
@@ -46,9 +47,9 @@ export function CashOutForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <label className="block text-sm">
-        <span className="text-zinc-500">PayPal email to receive earnings</span>
+    <form onSubmit={submit} className="flex flex-col items-start gap-3">
+      <label className="block w-full text-sm">
+        <span className="text-xs text-zinc-500">PayPal email to receive earnings</span>
         <input
           type="email"
           required
@@ -56,7 +57,7 @@ export function CashOutForm({
           onChange={(e) => setEmail(e.target.value)}
           readOnly={!!lockedEmail}
           placeholder="you@example.com"
-          className="mt-1 w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+          className={`${ui.input} mt-1 read-only:text-zinc-500`}
         />
         {lockedEmail && (
           <span className="mt-1 block text-xs text-zinc-500">Public demo: payouts always go to the demo publisher&apos;s sandbox account.</span>
@@ -64,12 +65,14 @@ export function CashOutForm({
       </label>
       <button
         disabled={pending || !enough}
-        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        className={`${ui.btnAccent} mt-1 tabular-nums`}
       >
         {pending ? "Sending…" : `Cash out $${(balanceCents / 100).toFixed(2)} with PayPal`}
       </button>
       {!enough && <p className="text-xs text-zinc-500">Minimum payout is ${(minCents / 100).toFixed(2)}.</p>}
-      {message && <p className={`text-sm ${message.ok ? "text-emerald-600" : "text-red-600"}`}>{message.text}</p>}
+      {message && (
+        <p className={`text-sm text-pretty ${message.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{message.text}</p>
+      )}
     </form>
   );
 }

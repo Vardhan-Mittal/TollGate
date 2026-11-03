@@ -26,9 +26,9 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
       >
         <title>Tollgate: something went wrong</title>
         <main style={{ maxWidth: 520 }}>
-          <p style={{ color: "#059669", fontSize: 14, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>Tollgate</p>
-          <h1 style={{ margin: "12px 0 0", fontSize: 32, letterSpacing: "-0.02em" }}>Something went wrong.</h1>
-          <p style={{ marginTop: 16, opacity: 0.75, lineHeight: 1.5 }}>
+          <p style={{ color: "#059669", fontFamily: "ui-monospace, monospace", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase" }}>Tollgate</p>
+          <h1 style={{ margin: "12px 0 0", fontSize: 36, fontWeight: 600, lineHeight: 1.1, letterSpacing: "-0.035em" }}>Something went wrong.</h1>
+          <p style={{ marginTop: 16, color: "light-dark(#52525b, #a1a1aa)", lineHeight: 1.6 }}>
             The site couldn&apos;t load. Trying again normally fixes it.
             {error.digest && <span style={{ display: "block", marginTop: 8, fontSize: 12 }}>Reference: {error.digest}</span>}
           </p>
@@ -38,12 +38,13 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
               onClick={() => retry()}
               style={{
                 border: 0,
-                borderRadius: 8,
+                borderRadius: 999,
                 padding: "10px 20px",
                 font: "inherit",
+                fontSize: 14,
                 fontWeight: 500,
-                color: "#fff",
-                background: "#059669",
+                color: "light-dark(#ffffff, #18181b)",
+                background: "light-dark(#18181b, #fafafa)",
                 cursor: "pointer",
               }}
             >
@@ -51,7 +52,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
             </button>
             {/* A plain link: a full page load is the most reliable reset when the layout itself failed. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-            <a href="/" style={{ borderRadius: 8, padding: "10px 20px", fontWeight: 500, color: "inherit", border: "1px solid #a1a1aa", textDecoration: "none" }}>
+            <a href="/" style={{ borderRadius: 999, padding: "10px 20px", fontSize: 14, fontWeight: 500, color: "inherit", border: "1px solid light-dark(#e4e4e7, rgb(255 255 255 / 0.1))", textDecoration: "none" }}>
               Back to home
             </a>
           </div>

@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { SectionLabel } from "@/components/ui/kit";
 import { AnalyticsCard, EmptyState, Icons } from "./card";
 import { DataTable } from "./chart-bits";
 import { getAnalytics, REVENUE_DAYS, TRAFFIC_DAYS, type Analytics, type PricePoint } from "./data";
@@ -13,12 +14,7 @@ const MIN_PAID_FOR_PERCENTILES = 5;
 const MIN_VISITS_FOR_HEATMAP = 5;
 
 export function AnalyticsHeading() {
-  return (
-    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <h2 className="font-semibold">Analytics</h2>
-      <p className="font-mono text-xs text-zinc-500">UTC · test traffic excluded</p>
-    </div>
-  );
+  return <SectionLabel aside={<span className="font-mono">UTC · test traffic excluded</span>}>Analytics</SectionLabel>;
 }
 
 /** Per-request analytics: four cards over the last 14/30 days. Render inside <Suspense>. */

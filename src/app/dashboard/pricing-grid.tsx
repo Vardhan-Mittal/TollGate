@@ -29,8 +29,8 @@ function priceCell(aiField: "aiReadCents" | "aiTrainCents") {
     const differs = ai != null && ai !== p.value;
     return (
       <div className="py-2 text-right leading-5">
-        <p className="font-semibold">{fmt(p.value)}</p>
-        <p className={`text-xs ${differs ? "text-amber-600" : "text-zinc-500"}`}>AI {fmt(ai)}</p>
+        <p className="font-mono font-medium tabular-nums">{fmt(p.value)}</p>
+        <p className={`font-mono text-[11px] ${differs ? "text-amber-600 dark:text-amber-400" : "text-zinc-500"}`}>AI {fmt(ai)}</p>
       </div>
     );
   };
@@ -109,7 +109,7 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
           p.data?.overridden ? (
             <button
               type="button"
-              className="text-xs font-medium text-emerald-700 underline dark:text-emerald-400"
+              className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400"
               onClick={async () => {
                 const result = await resetToAiPrice(p.data!.id);
                 if (result.ok) {
@@ -123,7 +123,7 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
               You · reset to AI
             </button>
           ) : (
-            <span className="text-xs text-zinc-500">AI</span>
+            <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-500 dark:border-white/10">AI</span>
           ),
       },
     ],
@@ -145,7 +145,7 @@ export function PricingGrid({ rows: initialRows }: { rows: PriceRow[] }) {
           tooltipShowDelay={300}
         />
       </div>
-      <p className={`mt-3 min-h-5 text-sm ${message ? (message.ok ? "text-emerald-600" : "text-red-600") : "text-zinc-500"}`}>
+      <p className={`mt-3 min-h-5 text-sm text-pretty ${message ? (message.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400") : "text-zinc-500"}`}>
         {message?.text ?? "Click a price marked ✎ to override it in cents."}
       </p>
     </div>

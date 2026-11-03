@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader, PageShell, SectionLabel, ui } from "@/components/ui/kit";
 import { PRICE_LIMITS } from "@/lib/ai/pricing";
 import { prisma } from "@/lib/db";
 import { DEMO_MODE, DEMO_PAYOUT_EMAIL } from "@/lib/demo";
@@ -16,21 +17,27 @@ import { TrafficGrid, type TrafficRow } from "./traffic-grid";
 
 export default function DashboardPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">Publisher dashboard</h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">What AI agents paid to read The Grid Ledger, and your PayPal payouts.</p>
-      <Suspense fallback={<p className="mt-8 text-zinc-500">Loading…</p>}>
+    <PageShell>
+      <PageHeader
+        eyebrow="Publisher · The Grid Ledger"
+        title="Publisher dashboard,"
+        accent="what AI paid you."
+        description="What AI agents paid to read The Grid Ledger, and your PayPal payouts."
+      />
+      <Suspense fallback={<p className={`mt-12 text-sm ${ui.muted}`}>Loading…</p>}>
         <Dashboard />
       </Suspense>
-    </main>
+    </PageShell>
   );
 }
 
 const STATUS_STYLE = {
-  PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  SUCCESS: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  FAILED: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+  PENDING: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  SUCCESS: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  FAILED: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
 };
+
+const ROWS = "divide-y divide-zinc-200/70 border-t border-zinc-200/70 text-sm dark:divide-white/[0.06] dark:border-white/[0.06]";
 
 async function Dashboard() {
   // Pull fresh status from PayPal for payouts still in flight, but never wait more than 2 s:
@@ -111,12 +118,16 @@ async function Dashboard() {
   ];
 
   return (
-    <div className="mt-8 space-y-10">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
-            <p className="text-sm text-zinc-500">{s.label}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{s.value}</p>
+    <div className="mt-12 flex flex-col gap-10">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((s, i) => (
+          <div key={s.label} className={`${ui.card} flex min-w-0 flex-col justify-between gap-3 p-4 sm:p-5`}>
+            <p className={ui.label}>{s.label}</p>
+            <p
+              className={`font-mono text-2xl font-medium tracking-tight tabular-nums sm:text-3xl ${i === 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}
+            >
+              {s.value}
+            </p>
           </div>
         ))}
       </div>
@@ -125,47 +136,54 @@ async function Dashboard() {
         <AnalyticsSection />
       </Suspense>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h2 className="mb-4 font-semibold">Cash out</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className={`${ui.card} min-w-0 p-5 sm:p-6`}>
+          <SectionLabel>Cash out</SectionLabel>
           <CashOutForm
             defaultEmail={publisher.paypalEmail ?? ""}
             lockedEmail={DEMO_MODE ? DEMO_PAYOUT_EMAIL : null} balanceCents={publisher.balanceCents} minCents={MIN_PAYOUT_CENTS} />
 
-          <h3 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-wide text-zinc-500">Payout history</h3>
-          {payouts.length === 0 ? (
-            <p className="text-sm text-zinc-500">No payouts yet.</p>
-          ) : (
-            <ul className="divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-              {payouts.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 py-2">
-                  <span className="min-w-0">
-                    <span className="tabular-nums font-medium">${(p.amountCents / 100).toFixed(2)}</span>
-                    <span className="ml-2 truncate text-zinc-500">to {p.receiverEmail}</span>
-                    {p.failureReason && <span className="block text-xs text-red-600">{p.failureReason}</span>}
-                  </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[p.status]}`} title={p.paypalStatus ?? ""}>
-                    {p.status === "PENDING" && p.paypalStatus?.endsWith("UNCLAIMED") ? "unclaimed" : p.status.toLowerCase()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mt-8">
+            <SectionLabel>Payout history</SectionLabel>
+            {payouts.length === 0 ? (
+              <p className="text-sm text-zinc-500">No payouts yet.</p>
+            ) : (
+              <ul className={ROWS}>
+                {payouts.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+                    <span className="min-w-0 break-words">
+                      <span className="font-mono font-medium tabular-nums">${(p.amountCents / 100).toFixed(2)}</span>
+                      <span className="ml-2 text-zinc-500">to {p.receiverEmail}</span>
+                      {p.failureReason && <span className="block text-xs text-red-600 dark:text-red-400">{p.failureReason}</span>}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLE[p.status]}`}
+                      title={p.paypalStatus ?? ""}
+                    >
+                      {p.status === "PENDING" && p.paypalStatus?.endsWith("UNCLAIMED") ? "unclaimed" : p.status.toLowerCase()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
 
-        <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h2 className="mb-4 font-semibold">Recent AI agent visits</h2>
+        <section className={`${ui.card} min-w-0 p-5 sm:p-6`}>
+          <SectionLabel>Recent AI agent visits</SectionLabel>
           {visits.length === 0 ? (
             <p className="text-sm text-zinc-500">No bots yet.</p>
           ) : (
-            <ul className="divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
+            <ul className={ROWS}>
               {visits.map((v) => (
-                <li key={v.id} className="flex justify-between gap-3 py-2">
+                <li key={v.id} className="flex items-baseline justify-between gap-3 py-2.5">
                   <span className="min-w-0 truncate">
                     <span className="font-medium">{v.botName ?? "Unknown bot"}</span>
                     <span className="ml-2 text-zinc-500">{v.resource?.title ?? v.path}</span>
                   </span>
-                  <span className="shrink-0 text-xs text-zinc-500">
+                  <span
+                    className={`shrink-0 font-mono text-xs ${v.outcome === "PAID_ACCESS" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500"}`}
+                  >
                     {v.outcome === "PAID_ACCESS" ? "paid" : v.outcome === "QUOTED" ? "got 402" : "free"}
                   </span>
                 </li>
@@ -179,11 +197,11 @@ async function Dashboard() {
 
       <FinanceAssistant />
 
-      <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Articles &amp; AI pricing</h2>
-            <p className="text-sm text-zinc-500">
+      <section className={`${ui.card} min-w-0 p-5 sm:p-6`}>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0 max-w-2xl">
+            <SectionLabel>Articles &amp; AI pricing</SectionLabel>
+            <p className={`text-sm text-pretty ${ui.muted}`}>
               AI appraises each article and suggests prices within your limits ({formatCents(PRICE_LIMITS.readMinCents)}–
               {formatCents(PRICE_LIMITS.readMaxCents)} to read, up to {formatCents(PRICE_LIMITS.trainMaxCents)} to train). Override any price in the grid; your prices win.
             </p>

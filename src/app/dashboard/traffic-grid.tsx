@@ -3,6 +3,7 @@
 import type { ColDef, GridApi, ValueFormatterParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { useMemo, useRef, useState } from "react";
+import { SectionLabel, ui } from "@/components/ui/kit";
 import { useGridTheme } from "./grid-theme";
 
 export type TrafficRow = {
@@ -63,25 +64,26 @@ export function TrafficGrid({ rows }: { rows: TrafficRow[] }) {
   const conversion = quoted ? Math.round((paid.length / quoted) * 100) : 0;
 
   return (
-    <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-semibold">AI traffic &amp; revenue</h2>
-          <p className="text-sm text-zinc-500">
+    <section className={`${ui.card} min-w-0 p-5 sm:p-6`}>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <SectionLabel>AI traffic &amp; revenue</SectionLabel>
+          <p className={`text-sm text-pretty ${ui.muted}`}>
             Every 402 quote and paid read · {quoted} quotes · {paid.length} paid ({conversion}%) · ${(earned / 100).toFixed(2)} earned
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agents, articles…"
-            className="w-56 rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-sm dark:border-zinc-700"
+            aria-label="Search agents and articles"
+            className={`${ui.input} min-w-0 flex-1 sm:w-56! sm:flex-none`}
           />
           <button
             type="button"
             onClick={() => gridApi.current?.exportDataAsCsv({ fileName: "tollgate-ai-traffic.csv" })}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium dark:border-zinc-700"
+            className={ui.btnSecondary}
           >
             Export CSV
           </button>

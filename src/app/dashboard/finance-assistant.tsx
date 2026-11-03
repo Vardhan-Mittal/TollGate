@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { SectionLabel, ui } from "@/components/ui/kit";
 
 type Message = { role: "user" | "assistant"; content: string; actions?: { tool: string; detail: string }[] };
 
@@ -42,26 +43,28 @@ export function FinanceAssistant() {
   }
 
   return (
-    <section className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-      <h2 className="font-semibold">Finance assistant</h2>
-      <p className="text-sm text-zinc-500">
+    <section className={`${ui.card} min-w-0 p-5 sm:p-6`}>
+      <SectionLabel aside={<span className="font-mono">PayPal Agent Toolkit</span>}>Finance assistant</SectionLabel>
+      <p className={`max-w-2xl text-sm text-pretty ${ui.muted}`}>
         Ask about your AI earnings, cash out, or bill an AI company. Uses the PayPal Agent Toolkit; anything that moves money or
         sends an invoice waits for your &ldquo;yes&rdquo;.
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-5 flex flex-col gap-3">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
             <div
-              className={`max-w-[85%] rounded-xl px-4 py-2.5 text-sm leading-6 ${
-                m.role === "user" ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900" : "bg-zinc-100 dark:bg-zinc-900"
+              className={`max-w-[85%] break-words rounded-2xl px-4 py-2.5 text-sm leading-6 ${
+                m.role === "user"
+                  ? "rounded-br-md bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                  : "rounded-bl-md border border-zinc-200/70 bg-zinc-50 dark:border-white/[0.06] dark:bg-white/[0.03]"
               }`}
             >
               <p className="whitespace-pre-wrap">{m.content.replace(/\*\*/g, "")}</p>
               {m.actions && m.actions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {m.actions.map((a, j) => (
-                    <span key={j} title={a.detail} className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <span key={j} title={a.detail} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[11px] text-emerald-700 dark:text-emerald-400">
                       {a.tool}
                     </span>
                   ))}
@@ -76,7 +79,7 @@ export function FinanceAssistant() {
       {messages.length === 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {SUGGESTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => send(s)} className="rounded-full border border-zinc-300 px-3 py-1 text-left text-xs text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+            <button key={s} type="button" onClick={() => send(s)} className={`${ui.chip} text-left`}>
               {s}
             </button>
           ))}
@@ -88,15 +91,16 @@ export function FinanceAssistant() {
           e.preventDefault();
           send(input);
         }}
-        className="mt-4 flex gap-2"
+        className="mt-5 flex gap-2"
       >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about earnings, payouts or invoices…"
-          className="min-w-0 flex-1 rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm dark:border-zinc-700"
+          aria-label="Ask the finance assistant"
+          className={`${ui.input} min-w-0 flex-1`}
         />
-        <button disabled={pending || !input.trim()} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-zinc-900">
+        <button disabled={pending || !input.trim()} className={`${ui.btnPrimary} shrink-0`}>
           Send
         </button>
       </form>
